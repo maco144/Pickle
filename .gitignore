@@ -45,3 +45,7 @@ coverage/
 
 # Docker
 docker-compose.override.yml
+
+# Vite web app
+web/node_modules/
+web/dist/

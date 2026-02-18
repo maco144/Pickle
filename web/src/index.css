@@ -1,0 +1,27 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #0f1410;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #e0e0e0;
+}
+
+/* Smooth scrollbar for any overflow panels */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: rgba(45,212,94,0.04); }
+::-webkit-scrollbar-thumb { background: rgba(45,212,94,0.25); border-radius: 3px; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
