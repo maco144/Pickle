@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "name": "Pickle",
+    "type": "Cosmos SDK Blockchain",
+    "description": "Data Preservation Engine - AI validators compete to process and validate work at scale",
+    "generated": "2026-02-18",
+    "version": "1.0",
+    "language": "Go (backend), Rust (contracts), HTML/JS (frontend)",
+    "minGoVersion": "1.24"
+  },
+  "entryPoints": {
+    "cli": {
+      "path": "cmd/pickled/main.go",
+      "description": "Cosmos chain binary",
+      "command": "pickled"
+    },
+    "app": {
+      "path": "app.go",
+      "description": "Chain app initialization",
+      "exports": ["NewApp", "DefaultNodeHome"]
+    },
+    "dashboard": {
+      "path": "dashboard/forgeground-dashboard.html",
+      "description": "Real-time visualization (HTML5 + Three.js)",
+      "type": "frontend"
+    }
+  },
+  "modules": {
+    "workqueue": {
+      "path": "x/workqueue",
+      "status": "implemented",
+      "loc": 2495,
+      "description": "Work submission and tracking",
+      "keyFiles": [
+        "keeper/keeper.go",
+        "types/workqueue.pb.go",
+        "types/events.go",
+        "client/cli/tx.go"
+      ],
+      "keyTypes": ["WorkUnit", "MsgSubmitWork", "WorkStatus"],
+      "servers": ["QueryServer", "MsgServer"]
+    },
+    "bondingcurve": {
+      "path": "x/bondingcurve",
+      "status": "scaffolding",
+      "loc": 0,
+      "description": "Dynamic pricing and prize pool economics"
+    },
+    "validation": {
+      "path": "x/validation",
+      "status": "scaffolding",
+      "loc": 0,
+      "description": "CosmWasm contract validation logic"
+    },
+    "performance": {
+      "path": "x/performance",
+      "status": "scaffolding",
+      "loc": 0,
+      "description": "AI validator metrics and rewards"
+    }
+  },
+  "documentation": {
+    "architecture": {
+      "path": "docs/architecture.md",
+      "topics": [
+        "System design",
+        "Module interactions",
+        "Data flow",
+        "Economic model",
+        "State management"
+      ]
+    },
+    "guidelines": {
+      "path": "CLAUDE.md",
+      "topics": [
+        "Git workflow",
+        "Code organization",
+        "Module development pattern",
+        "Testing strategy",
+        "Naming conventions"
+      ]
+    },
+    "readme": {
+      "path": "README.md",
+      "topics": [
+        "Vision",
+        "Getting started",
+        "Architecture diagram",
+        "Directory structure",
+        "Contributing"
+      ]
+    },
+    "memory": {
+      "path": "MEMORY.md",
+      "purpose": "Persistent session notes (auto-generated)"
+    }
+  },
+  "configuration": {
+    "proto": {
+      "linter": "buf.yaml",
+      "generator": "buf.gen.yaml",
+      "generatedPath": "*/types/*.pb.go"
+    },
+    "build": {
+      "binary": "./bin/pickled",
+      "module": "github.com/maco144/pickle"
+    },
+    "testing": {
+      "framework": "Go testing package",
+      "pattern": "*_test.go",
+      "status": "not yet implemented"
+    }
+  },
+  "dependencies": {
+    "cosmossdk": "v0.50.8",
+    "cometbft": "v0.38.12",
+    "grpc": "v1.79.1",
+    "cobra": "v1.8.1"
+  },
+  "makefile": {
+    "targets": {
+      "build": "Build pickle chain binary",
+      "install": "Install to GOPATH/bin",
+      "test": "Run tests",
+      "proto": "Generate protobuf code",
+      "testnet": "Start single-validator testnet",
+      "clean": "Remove build artifacts",
+      "docker-build": "Build Docker image"
+    }
+  },
+  "keyPaths": {
+    "app": "app.go",
+    "cli": "cmd/pickled/main.go",
+    "modules": "x/",
+    "frontend": "dashboard/",
+    "docs": "docs/",
+    "proto": "proto/"
+  },
+  "developmentWorkflow": {
+    "addFeature": [
+      "Define types in .proto or types.go",
+      "Create Msg struct with ValidateBasic()",
+      "Add keeper method for state management",
+      "Register handler in msg_server.go",
+      "Add CLI command in client/cli/tx.go",
+      "Write unit tests",
+      "Commit with descriptive message"
+    ],
+    "runChain": [
+      "make build",
+      "make testnet"
+    ],
+    "runTests": [
+      "make test",
+      "go test ./..."
+    ]
+  },
+  "designPrinciples": [
+    "Rust-first: Critical logic in CosmWasm",
+    "Determinism: No randomness in critical paths",
+    "Transparency: All work tracked on-chain",
+    "Auditability: Every decision recorded with proof",
+    "Simplicity: Start minimal, add complexity only when needed"
+  ],
+  "securityChecklist": [
+    "Validate all inputs in ValidateBasic()",
+    "Use params module for configurable values",
+    "Store all state on-chain",
+    "Document complex logic thoroughly",
+    "No hardcoded values",
+    "No mutable state in contracts"
+  ],
+  "nextSteps": [
+    "Implement bonding curve module",
+    "Deploy validation contracts",
+    "Implement performance tracking",
+    "Write integration tests",
+    "Refine dashboard with real-time updates",
+    "Deploy multi-validator testnet"
+  ],
+  "structure": {
+    "app.go": "Chain initialization",
+    "cmd/pickled/": "CLI binary",
+    "x/": "Cosmos SDK modules",
+    "contracts/": "CosmWasm contracts (Rust)",
+    "dashboard/": "Web frontend",
+    "proto/": "Protocol Buffer definitions",
+    "docs/": "Documentation",
+    "Makefile": "Build targets",
+    "CLAUDE.md": "Project conventions",
+    "MEMORY.md": "Session memory"
+  }
+}

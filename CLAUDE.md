@@ -1,5 +1,16 @@
 # Claude Instructions for Pickle
 
+## 🚀 Quick Start for Developers
+
+**New to this project?** Start here:
+1. Read `PROJECT_INDEX.md` — Complete project overview (entry points, modules, structure, next steps)
+2. Read `docs/architecture.md` — System design and data flow
+3. Review the development workflow below
+
+**Why `PROJECT_INDEX.md`?** It's a living index that maps the entire codebase (modules, entry points, key files, status). Updated every session. Start here instead of exploring randomly.
+
+---
+
 ## Project Overview
 
 **Pickle** is a Cosmos SDK blockchain for validating and preserving data at scale. AIs compete to validate work (supply chain records, crypto transactions, ML datasets), with prize pools funded by businesses paying for verification. Built in Rust (CosmWasm) for auditability.
@@ -39,13 +50,14 @@
 - **Contracts:** Rust doc comments (`///`) for all public functions
 
 ### Development Flow
-1. **Read** the relevant architecture doc before coding
-2. **Design** types/messages on paper or in comments first
-3. **Implement** with clear separation of concerns
-4. **Test** with unit tests (Go) and integration tests (bash scripts)
-5. **Document** as you go (especially complex logic)
-6. **Commit** with meaningful message
-7. **Push** to share progress
+1. **Orient yourself:** Read `PROJECT_INDEX.md` to understand module layout and current status
+2. **Study the system:** Read the relevant architecture doc (`docs/architecture.md`) before coding
+3. **Design first:** Types/messages on paper or in comments before implementing
+4. **Implement:** With clear separation of concerns (keeper, types, messages, handlers)
+5. **Test:** Unit tests (Go) and integration tests (bash scripts) alongside code
+6. **Document:** As you go (especially complex logic)
+7. **Commit:** With meaningful message (focus on "why", not just "what")
+8. **Push:** Share progress when task is complete
 
 ## Module Development Pattern
 
@@ -156,9 +168,17 @@ wasm-validator path/to/contract.wasm
 
 ## References
 
+### Internal Documentation
+- **`PROJECT_INDEX.md`** — Complete codebase map (modules, entry points, file structure, next steps)
+- **`PROJECT_INDEX.json`** — Machine-readable version for tooling
+- **`docs/architecture.md`** — System design, module interactions, data flow
+- **`MEMORY.md`** — Session memory and persistent notes
+
+### External Resources
 - **Cosmos SDK Docs:** https://docs.cosmos.network/
 - **CosmWasm Docs:** https://docs.cosmwasm.com/
-- **Our Architecture:** See `/docs/architecture.md`
+- **Protocol Buffers:** https://developers.google.com/protocol-buffers
+- **gRPC:** https://grpc.io/docs/
 
 ## Emergency: Something Broke
 
