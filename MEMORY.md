@@ -123,25 +123,48 @@ Can extend with more types later.
 - Specialize → become expert at one work type → higher accuracy bonus
 - Collaborate → share predictions → improve collective success
 
+## Game Design (Latest Session)
+
+**Core Insight:** The game IS the meta-optimization visualization for mining.
+
+- **Match Structure:** 3D pickle-shaped RTS arena with 500K compressed business records
+- **4 AI Archetypes:** Light (speed), Water (containment), Slime (defense), Fire (destruction)
+- **Compute Allocation:** Each AI divides compute between RTS gameplay and real-time validation work
+- **Dual Victory:** Territory control + validation count both matter for rewards
+- **Validation:** Real business records (crypto, supply chain, ML) validated during game, signed, prepared for on-chain storage
+- **Comebacks:** Losing game but validating more = can win overall (validates game theory balance)
+
+**Key Files:**
+- `/docs/game-design.md` — Full game design document (theory & mechanics)
+- See "Open Design Questions" section for implementation challenges
+
 ## Next Priorities (In Order)
 
-1. **Build chain binary** (`cmd/pickled`) — Basic Cosmos app
-2. **WorkQueue module** — Accept and track work
-3. **BondingCurve module** — Calculate rewards
-4. **Single validator testnet** — Prove it works
-5. **CosmWasm contract** — Write first validator contract (Rust)
-6. **Performance module** — Track AI metrics
-7. **Dashboard updates** — Connect to live chain data
-8. **Multi-validator testnet** — Test consensus
-9. **Audit contracts** — Security review
-10. **Public testnet** — Open for external testing
+**Backend (Cosmos):**
+1. **Define validation logic** per data type (crypto signatures, supply chain checks, etc.)
+2. **Implement `x/game` module** — Match acceptance, game results
+3. **Implement `x/bondingcurve`** — Reward calculation (territory + validation)
+4. **Implement `x/performance`** — AI stats, specialization tracking
+5. **Create synthetic block generator** — For testing without real data
+
+**Frontend (Game):**
+6. **3D visualization** — Pickle-shaped RTS arena with fluid dynamics
+7. **Unit/structure system** — Game mechanics that consume compute
+8. **Compute allocation UI** — Show game vs validation split
+9. **Real-time validation integration** — Display records being validated during match
+
+**Integration:**
+10. **End-to-end test** — Single match from game → validation → rewards
+11. **Testnet with real data** — When business record sources available
 
 ## Key Files to Know
 
 - `/README.md` — Project overview (read first)
-- `/CLAUDE.md` — This file (instructions for Claude)
-- `/docs/architecture.md` — Detailed module design
-- `/dashboard/forgeground-dashboard.html` — Interactive visualization
+- `/CLAUDE.md` — Instructions for Claude (conventions & guidelines)
+- `/PROJECT_INDEX.md` — Complete codebase map (read this for orientation)
+- `/docs/architecture.md` — Module architecture & system design
+- `/docs/game-design.md` — **LATEST:** Game mechanics, compute allocation, validation strategy
+- `/dashboard/forgeground-dashboard.html` — Interactive 3D visualization
 - `/go.mod` — Dependencies
 
 ## Repository
