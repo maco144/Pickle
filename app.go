@@ -1,79 +1,37 @@
 package pickle
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
-	dbm "github.com/cosmos/cosmos-db"
+	"cosmossdk.io/log"
+	storetypes "cosmossdk.io/store/types"
+
+	tmdb "github.com/cometbft/cometbft-db"
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmjson "github.com/cometbft/cometbft/libs/json"
+	tmtypes "github.com/cometbft/cometbft/types"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/cosmos/cosmos-sdk/client"
-	nodeservice "github.com/cosmos/cosmos-sdk/client/grpc/node"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/runtime"
-	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
-	"github.com/cosmos/cosmos-sdk/std"
-	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/cosmos/cosmos-sdk/version"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
-	"github.com/cosmos/cosmos-sdk/x/auth/posthandler"
-	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	"github.com/cosmos/cosmos-sdk/x/auth/vesting"
-	"github.com/cosmos/cosmos-sdk/x/authz"
-	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
-	authzmodule "github.com/cosmos/cosmos-sdk/x/authz/module"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/cosmos/cosmos-sdk/x/capability"
-	capabilitykeeper "github.com/cosmos/cosmos-sdk/x/capability/keeper"
-	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
-	"github.com/cosmos/cosmos-sdk/x/crisis"
-	crisiskeeper "github.com/cosmos/cosmos-sdk/x/crisis/keeper"
-	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
-	distr "github.com/cosmos/cosmos-sdk/x/distribution"
-	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
-	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	"github.com/cosmos/cosmos-sdk/x/feegrant"
-	feegrantkeeper "github.com/cosmos/cosmos-sdk/x/feegrant/keeper"
-	feegranttypes "github.com/cosmos/cosmos-sdk/x/feegrant/types"
-	"github.com/cosmos/cosmos-sdk/x/gov"
-	govclient "github.com/cosmos/cosmos-sdk/x/gov/client"
-	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
-	"github.com/cosmos/cosmos-sdk/x/group"
-	groupkeeper "github.com/cosmos/cosmos-sdk/x/group/keeper"
-	groupmodule "github.com/cosmos/cosmos-sdk/x/group/module"
-	"github.com/cosmos/cosmos-sdk/x/mint"
-	mintkeeper "github.com/cosmos/cosmos-sdk/x/mint/keeper"
-	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
-	paramproposal "github.com/cosmos/cosmos-sdk/x/params/types/proposal"
-	"github.com/cosmos/cosmos-sdk/x/slashing"
-	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
-	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
-	"github.com/cosmos/cosmos-sdk/x/staking"
-	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/cosmos/cosmos-sdk/x/upgrade"
-	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
-	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
-	"github.com/spf13/cast"
-
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 
 	"github.com/maco144/pickle/x/workqueue"
 	workqueuekeeper "github.com/maco144/pickle/x/workqueue/keeper"
@@ -88,40 +46,17 @@ var (
 	// DefaultNodeHome default home directories for the application
 	DefaultNodeHome string
 
-	// ModuleBasics defines the module BasicManager is in charge of setting up basic,
-	// non-dependent module elements, such as codec registration and genesis verification.
+	// ModuleBasics defines the module BasicManager
 	ModuleBasics = module.NewBasicManager(
 		auth.AppModuleBasic{},
-		authz.AppModuleBasic{},
 		bank.AppModuleBasic{},
-		capability.AppModuleBasic{},
-		crisis.AppModuleBasic{},
-		distr.AppModuleBasic{},
-		feegrant.AppModuleBasic{},
-		gov.NewAppModuleBasic(
-			[]govclient.ProposalHandler{
-				paramproposal.ProposalHandler,
-			},
-		),
-		groupmodule.AppModuleBasic{},
-		mint.AppModuleBasic{},
 		params.AppModuleBasic{},
-		slashing.AppModuleBasic{},
-		staking.AppModuleBasic{},
-		upgrade.AppModuleBasic{},
-		vesting.AppModuleBasic{},
 		workqueue.AppModuleBasic{},
 	)
 
 	// module account permissions
 	maccPerms = map[string][]string{
-		authtypes.FeeCollectorName:     nil,
-		distrtypes.ModuleName:          nil,
-		minttypes.ModuleName:           {authtypes.Minter},
-		stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
-		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
-		govtypes.ModuleName:            {authtypes.Burner},
-		workqueuetypes.ModuleName:      nil,
+		authtypes.FeeCollectorName: nil,
 	}
 )
 
@@ -135,7 +70,7 @@ func init() {
 }
 
 // App extends an ABCI application, but with some additional fields
-// to track tendermint commits and module-specific keeprs
+// to track tendermint commits and module-specific keepers
 type App struct {
 	*baseapp.BaseApp
 	legacyAmino       *codec.LegacyCodec
@@ -143,25 +78,14 @@ type App struct {
 	interfaceRegistry types.InterfaceRegistry
 
 	// keepers
-	AccountKeeper      authkeeper.AccountKeeper
-	AuthzKeeper        authzkeeper.Keeper
-	BankKeeper         bankkeeper.Keeper
-	CapabilityKeeper   *capabilitykeeper.Keeper
-	StakingKeeper      stakingkeeper.Keeper
-	SlashingKeeper     slashingkeeper.Keeper
-	MintKeeper         mintkeeper.Keeper
-	DistrKeeper        distrkeeper.Keeper
-	GovKeeper          govkeeper.Keeper
-	CrisisKeeper       crisiskeeper.Keeper
-	UpgradeKeeper      upgradekeeper.Keeper
-	ParamsKeeper       paramskeeper.Keeper
-	FeegrantKeeper     feegrantkeeper.Keeper
-	GroupKeeper        groupkeeper.Keeper
-	WasmKeeper         wasmkeeper.Keeper
-	WorkqueueKeeper    workqueuekeeper.Keeper
+	keys map[string]*storetypes.KVStoreKey
+	tKeys map[string]*storetypes.TransientStoreKey
+	memKeys map[string]*storetypes.MemoryStoreKey
 
-	// scope
-	ScopedWasmKeeper workqueuekeeper.ScopeKeeper
+	AccountKeeper      authkeeper.AccountKeeper
+	BankKeeper         bankkeeper.Keeper
+	ParamsKeeper       paramskeeper.Keeper
+	WorkqueueKeeper    workqueuekeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -173,36 +97,163 @@ type App struct {
 // NewApp returns a reference to an initialized Pickle application.
 func NewApp(
 	logger log.Logger,
-	db dbm.DB,
+	db tmdb.DB,
 	traceStore io.Writer,
 	loadLatest bool,
 	appOpts servertypes.AppOptions,
 	baseAppOptions ...func(*baseapp.BaseApp),
 ) *App {
-	panic("Not yet implemented - coming in next iteration")
+	// Setup codec
+	var cdc codec.Codec
+	interfaceRegistry := types.NewInterfaceRegistry()
+	cdc = codec.NewProtoCodec(interfaceRegistry)
+	legacyAmino := codec.NewLegacyAmino()
+
+	// Register module codecs
+	ModuleBasics.RegisterInterfaces(interfaceRegistry)
+
+	// Create base app
+	bApp := baseapp.NewBaseApp(Name, logger, db, nil, append(
+		[]func(*baseapp.BaseApp){
+			baseapp.SetChainID("pickle-1"),
+		},
+		baseAppOptions...,
+	)...)
+	bApp.SetCommitMultiStoreTracer(traceStore)
+
+	// Declare store keys
+	keys := sdk.NewKVStoreKeys(
+		authtypes.StoreKey,
+		banktypes.StoreKey,
+		paramstypes.StoreKey,
+		workqueuetypes.StoreKey,
+	)
+
+	tKeys := sdk.NewTransientStoreKeys(
+		paramstypes.TStoreKey,
+	)
+
+	memKeys := sdk.NewMemoryStoreKeys(
+		workqueuetypes.MemStoreKey,
+	)
+
+	// Create app
+	app := &App{
+		BaseApp:           bApp,
+		legacyAmino:       legacyAmino,
+		appCodec:          cdc,
+		interfaceRegistry: interfaceRegistry,
+		keys:              keys,
+		tKeys:             tKeys,
+		memKeys:           memKeys,
+	}
+
+	// Initialize keepers
+	app.ParamsKeeper = paramskeeper.NewKeeper(
+		cdc,
+		legacyAmino,
+		keys[paramstypes.StoreKey],
+		tKeys[paramstypes.TStoreKey],
+	)
+
+	app.AccountKeeper = authkeeper.NewAccountKeeper(
+		cdc,
+		keys[authtypes.StoreKey],
+		authtypes.ProtoBaseAccount,
+		maccPerms,
+		sdk.Bech32MainPrefix,
+		"pickle",
+	)
+
+	app.BankKeeper = bankkeeper.NewBaseKeeper(
+		cdc,
+		keys[banktypes.StoreKey],
+		app.AccountKeeper,
+		map[string]bool{},
+		"pickle",
+	)
+
+	app.WorkqueueKeeper = workqueuekeeper.NewKeeper(
+		cdc,
+		keys[workqueuetypes.StoreKey],
+		memKeys[workqueuetypes.MemStoreKey],
+	)
+
+	// Create module manager
+	app.mm = module.NewManager(
+		auth.NewAppModule(cdc, app.AccountKeeper, nil, nil),
+		bank.NewAppModule(cdc, app.BankKeeper, app.AccountKeeper, nil),
+		params.NewAppModule(app.ParamsKeeper),
+		workqueue.NewAppModule(cdc, app.WorkqueueKeeper),
+	)
+
+	// Set module order
+	app.mm.SetOrderBeginBlockers()
+
+	app.mm.SetOrderEndBlockers()
+
+	app.mm.SetOrderInitGenesis(
+		authtypes.ModuleName,
+		banktypes.ModuleName,
+		paramstypes.ModuleName,
+		workqueuetypes.ModuleName,
+	)
+
+	// Register upgrade handlers
+	app.registerUpgradeHandlers()
+
+	// Mount stores
+	app.MountKVStores(keys)
+	app.MountTransientStores(tKeys)
+	app.MountMemoryStores(memKeys)
+
+	// Initialize the app
+	app.SetInitChainer(app.InitChainer)
+	app.SetBeginBlocker(app.BeginBlocker)
+	app.SetEndBlocker(app.EndBlocker)
+
+	// Set antehandler
+	app.SetAnteHandler(nil)
+
+	// Create the configurator
+	app.configurator = module.NewConfigurator(cdc, app.MsgServiceRouter(), app.GRPCQueryRouter())
+	app.mm.RegisterServices(app.configurator)
+
+	// Load latest version
+	if loadLatest {
+		if err := app.LoadLatestVersion(); err != nil {
+			panic(err)
+		}
+	}
+
+	// Initialize and seal capabilities
+	app.Seal()
+
+	return app
 }
 
 // Name returns the name of the App
 func (app *App) Name() string { return Name }
 
-// PreBlocker application updates every begin block
-func (app *App) PreBlocker(ctx sdk.Context) error {
-	return app.mm.PreBlock(ctx)
-}
-
 // BeginBlocker application updates every begin block
-func (app *App) BeginBlocker(ctx sdk.Context) error {
-	return app.mm.BeginBlock(ctx)
+func (app *App) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) error {
+	return app.mm.BeginBlock(ctx, req)
 }
 
 // EndBlocker application updates every end block
-func (app *App) EndBlocker(ctx sdk.Context) error {
-	return app.mm.EndBlock(ctx)
+func (app *App) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) ([]abci.ValidatorUpdate, error) {
+	return app.mm.EndBlock(ctx, req)
 }
 
 // InitChainer application update at chain initialization
 func (app *App) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
-	panic("Not yet implemented - coming in next iteration")
+	var genesisState map[string]json.RawMessage
+
+	if err := tmjson.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
+		panic(err)
+	}
+
+	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
 }
 
 // LegacyAmino returns SimApp's amino codec.
@@ -228,24 +279,7 @@ func (app *App) Configurator() module.Configurator {
 // RegisterAPIRoutes registers all application module routes with the provided
 // API server.
 func (app *App) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
-	clientCtx := apiSvr.ClientCtx
-	// Register new tx routes from grpc routes.
-	authtx.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
-
-	// Register new tendermint queries routes from grpc routes.
-	tmservice.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
-
-	// Register node gRPC service for grpc gateway.
-	nodeservice.RegisterNodeServiceHandler(clientCtx, apiSvr.GRPCGatewayRouter)
-
-	// register app's gRPC routes.
-	app.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
-}
-
-// RegisterGRPCGatewayRoutes registers gRPC Gateway routes on the given Mux.
-func (app *App) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
-	// Register workqueue module
-	workqueuetypes.RegisterQueryHandlerClient(context.Background(), mux, workqueuetypes.NewQueryClient(app.grpcQueryConn()))
+	// This is handled by the SDK's built-in routing
 }
 
 // GetKey returns the KVStoreKey for the provided store key.
@@ -263,6 +297,39 @@ func (app *App) GetMemKey(storeKey string) *storetypes.MemoryStoreKey {
 	return app.memKeys[storeKey]
 }
 
-func (app *App) grpcQueryConn() *grpc.ClientConn {
-	panic("Not yet implemented")
+// registerUpgradeHandlers registers upgrade handlers for the app
+func (app *App) registerUpgradeHandlers() {
+	// Upgrade handlers would go here
+}
+
+// RegisterTxService registers the tx service for the app
+func (app *App) RegisterTxService(clientCtx client.Context) {
+	// Tx service registration
+}
+
+// RegisterTendermintService registers the tendermint service for the app
+func (app *App) RegisterTendermintService(clientCtx client.Context) {
+	// Tendermint service registration
+}
+
+// ExportAppStateAndValidators exports the state of the application for a genesis file.
+func (app *App) ExportAppStateAndValidators(
+	forZeroHeight bool,
+	jailAllowedAddrs []string,
+) (json.RawMessage, []tmtypes.GenesisValidator, error) {
+	ctx := app.NewContext(true)
+
+	// Export genesis state
+	genesisState := app.mm.ExportGenesisForModules(
+		ctx,
+		app.appCodec,
+		[]string{},
+	)
+
+	appState, err := json.MarshalIndent(genesisState, "", "  ")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return appState, []tmtypes.GenesisValidator{}, nil
 }

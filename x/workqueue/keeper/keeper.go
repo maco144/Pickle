@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/codec"
-	storetypes "github.com/cosmos/cosmos-sdk/store/types"
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/tendermint/tendermint/crypto"
+	"crypto/sha256"
 
 	"github.com/maco144/pickle/x/workqueue/types"
 )
@@ -42,7 +42,8 @@ func (k Keeper) SubmitWork(ctx sdk.Context, workUnit *types.WorkUnit) error {
 
 	// Generate ID if not provided (use block height + hash)
 	if workUnit.ID == "" {
-		workUnit.ID = fmt.Sprintf("%d-%x", ctx.BlockHeight(), crypto.Sha256(workUnit.Data)[:8])
+		hash := sha256.Sum256(workUnit.Data)
+		workUnit.ID = fmt.Sprintf("%d-%x", ctx.BlockHeight(), hash[:8])
 	}
 
 	// Set submission block height

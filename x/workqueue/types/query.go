@@ -1,7 +1,5 @@
 package types
 
-import sdk "github.com/cosmos/cosmos-sdk/types"
-
 // QueryWorkRequest is the request for querying a specific work unit
 type QueryWorkRequest struct {
 	WorkID string `protobuf:"bytes,1,opt,name=work_id,json=workId,proto3" json:"work_id,omitempty"`
