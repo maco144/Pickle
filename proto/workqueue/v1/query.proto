@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package pickle.workqueue.v1;
+
+option go_package = "github.com/maco144/pickle/x/workqueue/types";
+
+import "workqueue/v1/workqueue.proto";
+
+// Query defines the gRPC querier service
+service Query {
+  // Work queries for a specific work unit
+  rpc Work(QueryWorkRequest) returns (QueryWorkResponse);
+
+  // PendingWork queries for pending work units
+  rpc PendingWork(QueryPendingWorkRequest) returns (QueryPendingWorkResponse);
+
+  // ValidatorStats queries statistics for a validator
+  rpc ValidatorStats(QueryValidatorStatsRequest) returns (QueryValidatorStatsResponse);
+
+  // TotalStats queries total statistics
+  rpc TotalStats(QueryTotalStatsRequest) returns (QueryTotalStatsResponse);
+}
+
+// QueryWorkRequest is the request for querying a specific work unit
+message QueryWorkRequest {
+  string work_id = 1;
+}
+
+// QueryWorkResponse is the response for querying a specific work unit
+message QueryWorkResponse {
+  // Work is the requested work unit
+  WorkUnit work = 1;
+}
+
+// QueryPendingWorkRequest is the request for querying pending work
+message QueryPendingWorkRequest {}
+
+// QueryPendingWorkResponse is the response for querying pending work
+message QueryPendingWorkResponse {
+  // PendingWork is the list of pending work units
+  repeated WorkUnit pending_work = 1;
+}
+
+// QueryValidatorStatsRequest is the request for querying validator stats
+message QueryValidatorStatsRequest {
+  string validator_address = 1;
+}
+
+// QueryValidatorStatsResponse is the response for querying validator stats
+message QueryValidatorStatsResponse {
+  // Stats contains the validator's statistics
+  ValidatorStats stats = 1;
+}
+
+// QueryTotalStatsRequest is the request for querying total statistics
+message QueryTotalStatsRequest {}
+
+// QueryTotalStatsResponse is the response for querying total statistics
+message QueryTotalStatsResponse {
+  // TotalSubmitted is the total number of submitted work units
+  uint64 total_submitted = 1;
+
+  // TotalValidated is the total number of validated work units
+  uint64 total_validated = 2;
+
+  // TotalRejected is the total number of rejected work units
+  uint64 total_rejected = 3;
+}

@@ -15,11 +15,10 @@ import (
 // GetTxCmd returns the transaction commands for this module
 func GetTxCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                        types.ModuleName,
-		Short:                      fmt.Sprintf("%s transactions subcommands", types.ModuleName),
-		DisableFlagParsing:         true,
-		SuggestionsMinEditDistance: 2,
-		RunE:                       client.ValidateCmd,
+		Use:                types.ModuleName,
+		Short:              fmt.Sprintf("%s transactions subcommands", types.ModuleName),
+		DisableFlagParsing: true,
+		RunE:               client.ValidateCmd,
 	}
 
 	cmd.AddCommand(
@@ -47,10 +46,6 @@ func CmdSubmitWork() *cobra.Command {
 				Submitter: clientCtx.GetFromAddress().String(),
 				WorkType:  args[0],
 				WorkData:  []byte(args[1]),
-			}
-
-			if err := msg.ValidateBasic(); err != nil {
-				return err
 			}
 
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
@@ -82,13 +77,9 @@ func CmdValidateWork() *cobra.Command {
 
 			msg := &types.MsgValidateWork{
 				Validator:  clientCtx.GetFromAddress().String(),
-				WorkID:     args[0],
+				WorkId:     args[0],
 				Valid:      valid,
 				Confidence: confidence,
-			}
-
-			if err := msg.ValidateBasic(); err != nil {
-				return err
 			}
 
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
@@ -113,12 +104,8 @@ func CmdRejectWork() *cobra.Command {
 
 			msg := &types.MsgRejectWork{
 				Validator: clientCtx.GetFromAddress().String(),
-				WorkID:    args[0],
+				WorkId:    args[0],
 				Reason:    args[1],
-			}
-
-			if err := msg.ValidateBasic(); err != nil {
-				return err
 			}
 
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)

@@ -12,6 +12,7 @@ import (
 
 type queryServer struct {
 	Keeper
+	types.UnimplementedQueryServer
 }
 
 // NewQueryServerImpl returns an implementation of the QueryServer interface
@@ -19,8 +20,6 @@ type queryServer struct {
 func NewQueryServerImpl(keeper Keeper) types.QueryServer {
 	return &queryServer{Keeper: keeper}
 }
-
-var _ types.QueryServer = queryServer{}
 
 // Work implements the Query.Work method
 func (qs queryServer) Work(goCtx context.Context, req *types.QueryWorkRequest) (*types.QueryWorkResponse, error) {
@@ -30,7 +29,7 @@ func (qs queryServer) Work(goCtx context.Context, req *types.QueryWorkRequest) (
 
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	work, found := qs.Keeper.GetWork(ctx, req.WorkID)
+	work, found := qs.Keeper.GetWork(ctx, req.WorkId)
 	if !found {
 		return nil, status.Error(codes.NotFound, "work not found")
 	}

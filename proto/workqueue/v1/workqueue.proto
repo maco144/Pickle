@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package pickle.workqueue.v1;
+
+option go_package = "github.com/maco144/pickle/x/workqueue/types";
+
+// WorkUnit represents a single unit of work to be validated
+message WorkUnit {
+  // ID is a unique identifier for this work unit
+  string id = 1;
+
+  // Type is the type of work (crypto, supply_chain, ml_data)
+  string type = 2;
+
+  // Data is the raw data that needs to be validated
+  bytes data = 3;
+
+  // SubmittedAt is the block height when the work was submitted
+  int64 submitted_at = 4;
+
+  // ValidatedAt is the block height when the work was validated
+  int64 validated_at = 5;
+
+  // Validator is the address of the validator that handled this work
+  string validator = 6;
+
+  // Status is the current status of the work
+  string status = 7;
+
+  // Confidence is the validator's confidence in the result (0-100)
+  uint32 confidence = 8;
+
+  // Proof is optional proof of validation
+  string proof = 9;
+}
+
+// ValidatorStats tracks performance metrics for a validator
+message ValidatorStats {
+  // Address is the validator's address
+  string address = 1;
+
+  // TotalWorkValidated is the number of work units validated
+  uint64 total_work_validated = 2;
+
+  // TotalWorkRejected is the number of work units rejected
+  uint64 total_work_rejected = 3;
+
+  // Specializations tracks count of work per type
+  map<string, uint64> specializations = 4;
+
+  // AverageConfidence is the average confidence of validations
+  uint32 average_confidence = 5;
+
+  // LastActiveAt is the block height when last active
+  int64 last_active_at = 6;
+}
+
+// WorkQueue stores the queue of work units
+message WorkQueue {
+  // PendingWork is a list of work units waiting to be validated
+  repeated WorkUnit pending_work = 1;
+
+  // TotalSubmitted is the total number of work units ever submitted
+  uint64 total_submitted = 2;
+
+  // TotalValidated is the total number of work units validated
+  uint64 total_validated = 3;
+
+  // TotalRejected is the total number of work units rejected
+  uint64 total_rejected = 4;
+}
+
+// GenesisState defines the initial state of the workqueue module
+message GenesisState {
+  // WorkQueue is the initial work queue state
+  WorkQueue work_queue = 1;
+
+  // Validators is the list of initial validators with their stats
+  repeated ValidatorStats validators = 2;
+}

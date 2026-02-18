@@ -1,12 +1,11 @@
 package workqueue
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
-	abci "github.com/cometbft/cometbft/abci/types"
-	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/cometbft/cometbft/abci/types"
+	gwruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -17,7 +16,7 @@ import (
 
 	"github.com/maco144/pickle/x/workqueue/client/cli"
 	"github.com/maco144/pickle/x/workqueue/keeper"
-	"github.com/maco144/pickle/x/workqueue/types"
+	workqueuetypes "github.com/maco144/pickle/x/workqueue/types"
 )
 
 var (
@@ -32,39 +31,32 @@ type AppModuleBasic struct {
 
 // Name returns the workqueue module's name.
 func (AppModuleBasic) Name() string {
-	return types.ModuleName
+	return workqueuetypes.ModuleName
 }
 
-// RegisterCodec registers the workqueue module's types on the given codec.
-func (AppModuleBasic) RegisterCodec(cdc *codec.LegacyCodec) {
-	types.RegisterCodec(cdc)
+// RegisterLegacyAminoCodec registers the module's types on the LegacyAmino codec.
+func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
+	// TODO: Register legacy amino codec if needed
 }
 
 // RegisterInterfaces registers the module's interface types
 func (b AppModuleBasic) RegisterInterfaces(registry codectypes.InterfaceRegistry) {
-	types.RegisterInterfaces(registry)
+	workqueuetypes.RegisterInterfaces(registry)
 }
 
 // DefaultGenesis returns default genesis state as raw bytes for the workqueue
 // module.
 func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
-	return cdc.MustMarshalJSON(&types.GenesisState{})
+	return cdc.MustMarshalJSON(&workqueuetypes.GenesisState{})
 }
 
 // ValidateGenesis performs genesis state validation for the workqueue module.
 func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, config client.TxEncodingConfig, bz json.RawMessage) error {
-	var genState types.GenesisState
+	var genState workqueuetypes.GenesisState
 	if err := cdc.UnmarshalJSON(bz, &genState); err != nil {
-		return fmt.Errorf("failed to unmarshal %s genesis state: %w", types.ModuleName, err)
+		return fmt.Errorf("failed to unmarshal %s genesis state: %w", workqueuetypes.ModuleName, err)
 	}
-	return genState.Validate()
-}
-
-// RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the workqueue module.
-func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *gwruntime.ServeMux) {
-	if err := types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx)); err != nil {
-		panic(err)
-	}
+	return nil
 }
 
 // GetTxCmd returns the root tx command for the workqueue module.
@@ -74,7 +66,12 @@ func (b AppModuleBasic) GetTxCmd() *cobra.Command {
 
 // GetQueryCmd returns the root query command for the workqueue module.
 func (AppModuleBasic) GetQueryCmd() *cobra.Command {
-	return cli.GetQueryCmd(types.StoreKey)
+	return cli.GetQueryCmd(workqueuetypes.StoreKey)
+}
+
+// RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the workqueue module.
+func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *gwruntime.ServeMux) {
+	// TODO: Register gRPC Gateway routes if needed
 }
 
 // AppModule implements an application module for the workqueue module.
@@ -91,19 +88,25 @@ func NewAppModule(cdc codec.Codec, keeper keeper.Keeper) AppModule {
 	}
 }
 
+// IsAppModule implements the appmodule.AppModule interface.
+func (AppModule) IsAppModule() {}
+
+// IsOnePerModuleType implements the appmodule.IsOnePerModuleType interface.
+func (AppModule) IsOnePerModuleType() {}
+
 // RegisterServices registers module services.
 func (am AppModule) RegisterServices(cfg module.Configurator) {
-	types.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServerImpl(am.keeper))
-	types.RegisterQueryServer(cfg.QueryServer(), keeper.NewQueryServerImpl(am.keeper))
+	workqueuetypes.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServerImpl(am.keeper))
+	workqueuetypes.RegisterQueryServer(cfg.QueryServer(), keeper.NewQueryServerImpl(am.keeper))
 }
 
 // InitGenesis performs genesis initialization for the workqueue module. It returns
 // no validator updates.
-func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, data json.RawMessage) []abci.ValidatorUpdate {
-	var genState types.GenesisState
+func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, data json.RawMessage) []types.ValidatorUpdate {
+	var genState workqueuetypes.GenesisState
 	cdc.MustUnmarshalJSON(data, &genState)
-	am.keeper.InitGenesis(ctx, genState)
-	return []abci.ValidatorUpdate{}
+	am.keeper.InitGenesis(ctx, &genState)
+	return []types.ValidatorUpdate{}
 }
 
 // ExportGenesis returns the exported genesis state as raw bytes for the workqueue
@@ -116,16 +119,6 @@ func (am AppModule) ExportGenesis(ctx sdk.Context, cdc codec.JSONCodec) json.Raw
 // RegisterInvariants registers the workqueue module invariants.
 func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {
 	// TODO: Register invariants if needed
-}
-
-// BeginBlock performs a module's begin-block logic.
-func (am AppModule) BeginBlock(_ context.Context, _ abci.RequestBeginBlock) error {
-	return nil
-}
-
-// EndBlock performs a module's end-block logic.
-func (am AppModule) EndBlock(_ context.Context, _ abci.RequestEndBlock) ([]abci.ValidatorUpdate, error) {
-	return []abci.ValidatorUpdate{}, nil
 }
 
 // ConsensusVersion implements AppModule/ConsensusVersion.

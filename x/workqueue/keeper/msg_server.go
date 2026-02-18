@@ -9,6 +9,7 @@ import (
 
 type msgServer struct {
 	Keeper
+	types.UnimplementedMsgServer
 }
 
 // NewMsgServerImpl returns an implementation of the MsgServer interface
@@ -17,15 +18,13 @@ func NewMsgServerImpl(keeper Keeper) types.MsgServer {
 	return &msgServer{Keeper: keeper}
 }
 
-var _ types.MsgServer = msgServer{}
-
 // SubmitWork implements the MsgServer.SubmitWork method
 func (ms msgServer) SubmitWork(goCtx context.Context, msg *types.MsgSubmitWork) (*types.MsgSubmitWorkResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
 	// Create work unit from message
 	work := &types.WorkUnit{
-		ID:   msg.WorkID,
+		Id:   msg.WorkId,
 		Type: msg.WorkType,
 		Data: msg.WorkData,
 	}
@@ -36,7 +35,7 @@ func (ms msgServer) SubmitWork(goCtx context.Context, msg *types.MsgSubmitWork) 
 	}
 
 	return &types.MsgSubmitWorkResponse{
-		WorkID: work.ID,
+		WorkId: work.Id,
 	}, nil
 }
 
@@ -45,13 +44,11 @@ func (ms msgServer) ValidateWork(goCtx context.Context, msg *types.MsgValidateWo
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
 	// Validate the work
-	if err := ms.Keeper.ValidateWork(ctx, msg.WorkID, msg.Validator, msg.Valid, msg.Confidence, msg.Proof); err != nil {
+	if err := ms.Keeper.ValidateWork(ctx, msg.WorkId, msg.Validator, msg.Valid, msg.Confidence, msg.Proof); err != nil {
 		return nil, err
 	}
 
-	return &types.MsgValidateWorkResponse{
-		Success: true,
-	}, nil
+	return &types.MsgValidateWorkResponse{}, nil
 }
 
 // RejectWork implements the MsgServer.RejectWork method
@@ -59,11 +56,9 @@ func (ms msgServer) RejectWork(goCtx context.Context, msg *types.MsgRejectWork) 
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
 	// Reject the work
-	if err := ms.Keeper.RejectWork(ctx, msg.WorkID, msg.Validator, msg.Reason); err != nil {
+	if err := ms.Keeper.RejectWork(ctx, msg.WorkId, msg.Validator, msg.Reason); err != nil {
 		return nil, err
 	}
 
-	return &types.MsgRejectWorkResponse{
-		Success: true,
-	}, nil
+	return &types.MsgRejectWorkResponse{}, nil
 }

@@ -1,12 +1,14 @@
 package keeper
 
 import (
+	"crypto/sha256"
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/codec"
+	"cosmossdk.io/log"
+	"cosmossdk.io/store/prefix"
 	storetypes "cosmossdk.io/store/types"
+	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"crypto/sha256"
 
 	"github.com/maco144/pickle/x/workqueue/types"
 )
@@ -14,13 +16,13 @@ import (
 type (
 	Keeper struct {
 		cdc      codec.BinaryCodec
-		storeKey storetypes.KVStoreKey
-		memKey   storetypes.MemoryStoreKey
+		storeKey *storetypes.KVStoreKey
+		memKey   *storetypes.MemoryStoreKey
 	}
 )
 
 // NewKeeper creates a new Keeper instance
-func NewKeeper(cdc codec.BinaryCodec, storeKey storetypes.KVStoreKey, memKey storetypes.MemoryStoreKey) Keeper {
+func NewKeeper(cdc codec.BinaryCodec, storeKey *storetypes.KVStoreKey, memKey *storetypes.MemoryStoreKey) Keeper {
 	return Keeper{
 		cdc:      cdc,
 		storeKey: storeKey,
@@ -29,26 +31,21 @@ func NewKeeper(cdc codec.BinaryCodec, storeKey storetypes.KVStoreKey, memKey sto
 }
 
 // Logger returns a module-specific logger
-func (k Keeper) Logger(ctx sdk.Context) sdk.Logger {
+func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
 
 // SubmitWork submits a new work unit for validation
 func (k Keeper) SubmitWork(ctx sdk.Context, workUnit *types.WorkUnit) error {
-	// Validate the work unit
-	if err := workUnit.ValidateBasic(); err != nil {
-		return err
-	}
-
 	// Generate ID if not provided (use block height + hash)
-	if workUnit.ID == "" {
+	if workUnit.Id == "" {
 		hash := sha256.Sum256(workUnit.Data)
-		workUnit.ID = fmt.Sprintf("%d-%x", ctx.BlockHeight(), hash[:8])
+		workUnit.Id = fmt.Sprintf("%d-%x", ctx.BlockHeight(), hash[:8])
 	}
 
 	// Set submission block height
 	workUnit.SubmittedAt = ctx.BlockHeight()
-	workUnit.Status = string(types.WorkStatusPending)
+	workUnit.Status = types.WorkStatusPending
 
 	// Store the work unit
 	k.SetWork(ctx, workUnit)
@@ -60,7 +57,7 @@ func (k Keeper) SubmitWork(ctx sdk.Context, workUnit *types.WorkUnit) error {
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
 			types.EventTypeWorkSubmitted,
-			sdk.NewAttribute(types.AttributeKeyWorkID, workUnit.ID),
+			sdk.NewAttribute(types.AttributeKeyWorkID, workUnit.Id),
 			sdk.NewAttribute(types.AttributeKeyWorkType, workUnit.Type),
 			sdk.NewAttribute(types.AttributeKeySubmittedAt, fmt.Sprintf("%d", workUnit.SubmittedAt)),
 		),
@@ -71,7 +68,6 @@ func (k Keeper) SubmitWork(ctx sdk.Context, workUnit *types.WorkUnit) error {
 
 // GetWork retrieves a work unit by ID
 func (k Keeper) GetWork(ctx sdk.Context, workID string) (*types.WorkUnit, bool) {
-	// TODO: Implement work retrieval
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(types.WorkUnitKey(workID))
 	if bz == nil {
@@ -85,15 +81,13 @@ func (k Keeper) GetWork(ctx sdk.Context, workID string) (*types.WorkUnit, bool) 
 
 // SetWork stores a work unit
 func (k Keeper) SetWork(ctx sdk.Context, work *types.WorkUnit) {
-	// TODO: Implement work storage
 	store := ctx.KVStore(k.storeKey)
 	bz := k.cdc.MustMarshal(work)
-	store.Set(types.WorkUnitKey(work.ID), bz)
+	store.Set(types.WorkUnitKey(work.Id), bz)
 }
 
 // GetValidatorStats retrieves statistics for a validator
 func (k Keeper) GetValidatorStats(ctx sdk.Context, validatorAddr string) (*types.ValidatorStats, bool) {
-	// TODO: Implement stats retrieval
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(types.ValidatorStatsKey(validatorAddr))
 	if bz == nil {
@@ -107,7 +101,6 @@ func (k Keeper) GetValidatorStats(ctx sdk.Context, validatorAddr string) (*types
 
 // SetValidatorStats stores validator statistics
 func (k Keeper) SetValidatorStats(ctx sdk.Context, stats *types.ValidatorStats) {
-	// TODO: Implement stats storage
 	store := ctx.KVStore(k.storeKey)
 	bz := k.cdc.MustMarshal(stats)
 	store.Set(types.ValidatorStatsKey(stats.Address), bz)
@@ -117,13 +110,14 @@ func (k Keeper) SetValidatorStats(ctx sdk.Context, stats *types.ValidatorStats) 
 func (k Keeper) GetPendingWork(ctx sdk.Context) []*types.WorkUnit {
 	var pending []*types.WorkUnit
 	store := ctx.KVStore(k.storeKey)
-	iterator := storetypes.PrefixIterator(store, types.KeyPrefixWorkUnit)
+	prefixStore := prefix.NewStore(store, types.KeyPrefixWorkUnit)
+	iterator := prefixStore.Iterator(nil, nil)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {
 		var work types.WorkUnit
 		k.cdc.MustUnmarshal(iterator.Value(), &work)
-		if work.Status == string(types.WorkStatusPending) {
+		if work.Status == types.WorkStatusPending {
 			pending = append(pending, &work)
 		}
 	}
@@ -151,10 +145,10 @@ func (k Keeper) ValidateWork(ctx sdk.Context, workID string, validatorAddr strin
 	work.Proof = proof
 
 	if valid {
-		work.Status = string(types.WorkStatusValidated)
+		work.Status = types.WorkStatusValidated
 		k.IncrementTotalValidated(ctx)
 	} else {
-		work.Status = string(types.WorkStatusRejected)
+		work.Status = types.WorkStatusRejected
 		k.IncrementTotalRejected(ctx)
 	}
 
@@ -165,8 +159,8 @@ func (k Keeper) ValidateWork(ctx sdk.Context, workID string, validatorAddr strin
 	stats, _ := k.GetValidatorStats(ctx, validatorAddr)
 	if stats == nil {
 		stats = &types.ValidatorStats{
-			Address:           validatorAddr,
-			Specializations:   make(map[string]uint64),
+			Address:         validatorAddr,
+			Specializations: make(map[string]uint64),
 		}
 	}
 
@@ -221,7 +215,7 @@ func (k Keeper) RejectWork(ctx sdk.Context, workID string, validatorAddr string,
 	// Update work unit
 	work.Validator = validatorAddr
 	work.ValidatedAt = ctx.BlockHeight()
-	work.Status = string(types.WorkStatusRejected)
+	work.Status = types.WorkStatusRejected
 	work.Proof = reason
 
 	// Store updated work unit
@@ -313,7 +307,8 @@ func (k Keeper) IncrementTotalSubmitted(ctx sdk.Context) {
 // IterateValidators iterates over all validators with stats
 func (k Keeper) IterateValidators(ctx sdk.Context, cb func(validator string, stats *types.ValidatorStats) bool) {
 	store := ctx.KVStore(k.storeKey)
-	iterator := storetypes.PrefixIterator(store, types.KeyPrefixValidatorStats)
+	prefixStore := prefix.NewStore(store, types.KeyPrefixValidatorStats)
+	iterator := prefixStore.Iterator(nil, nil)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {

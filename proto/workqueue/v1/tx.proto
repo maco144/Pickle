@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package pickle.workqueue.v1;
+
+option go_package = "github.com/maco144/pickle/x/workqueue/types";
+
+// Msg defines the workqueue Msg service
+service Msg {
+  // SubmitWork submits a new work unit for validation
+  rpc SubmitWork(MsgSubmitWork) returns (MsgSubmitWorkResponse);
+
+  // ValidateWork submits a validation result for a work unit
+  rpc ValidateWork(MsgValidateWork) returns (MsgValidateWorkResponse);
+
+  // RejectWork explicitly rejects a work unit
+  rpc RejectWork(MsgRejectWork) returns (MsgRejectWorkResponse);
+}
+
+// MsgSubmitWork submits a new work unit for validation
+message MsgSubmitWork {
+  // Submitter is the address submitting the work
+  string submitter = 1;
+
+  // WorkType is the type of work (crypto, supply_chain, ml_data)
+  string work_type = 2;
+
+  // WorkData is the raw data to validate
+  bytes work_data = 3;
+
+  // WorkID is a unique identifier (optional, generated if not provided)
+  string work_id = 4;
+}
+
+// MsgSubmitWorkResponse is the response to SubmitWork
+message MsgSubmitWorkResponse {
+  // WorkID is the ID of the submitted work
+  string work_id = 1;
+}
+
+// MsgValidateWork submits a validation result for a work unit
+message MsgValidateWork {
+  // Validator is the address of the validator
+  string validator = 1;
+
+  // WorkID is the ID of the work unit being validated
+  string work_id = 2;
+
+  // Valid indicates if the work unit passed validation
+  bool valid = 3;
+
+  // Confidence is the validator's confidence in this result (0-100)
+  uint32 confidence = 4;
+
+  // Proof is optional proof of validation (e.g., hash of verification)
+  string proof = 5;
+
+  // Reason is an optional explanation if invalid
+  string reason = 6;
+}
+
+// MsgValidateWorkResponse is the response to ValidateWork
+message MsgValidateWorkResponse {}
+
+// MsgRejectWork explicitly rejects a work unit
+message MsgRejectWork {
+  // Validator is the address of the validator
+  string validator = 1;
+
+  // WorkID is the ID of the work unit being rejected
+  string work_id = 2;
+
+  // Reason is the reason for rejection
+  string reason = 3;
+}
+
+// MsgRejectWorkResponse is the response to RejectWork
+message MsgRejectWorkResponse {}

@@ -14,11 +14,10 @@ import (
 // GetQueryCmd returns the query commands for this module
 func GetQueryCmd(queryRoute string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                        types.ModuleName,
-		Short:                      fmt.Sprintf("Querying commands for the %s module", types.ModuleName),
-		DisableFlagParsing:         true,
-		SuggestionsMinEditDistance: 2,
-		RunE:                       client.ValidateCmd,
+		Use:                types.ModuleName,
+		Short:              fmt.Sprintf("Querying commands for the %s module", types.ModuleName),
+		DisableFlagParsing: true,
+		RunE:               client.ValidateCmd,
 	}
 
 	cmd.AddCommand(
@@ -44,7 +43,7 @@ func CmdQueryWork() *cobra.Command {
 			}
 
 			queryClient := types.NewQueryClient(clientCtx)
-			req := &types.QueryWorkRequest{WorkID: args[0]}
+			req := &types.QueryWorkRequest{WorkId: args[0]}
 
 			res, err := queryClient.Work(cmd.Context(), req)
 			if err != nil {
