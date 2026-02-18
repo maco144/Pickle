@@ -15,6 +15,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 
+	"github.com/maco144/pickle/x/workqueue/client/cli"
 	"github.com/maco144/pickle/x/workqueue/keeper"
 	"github.com/maco144/pickle/x/workqueue/types"
 )
@@ -68,12 +69,12 @@ func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *g
 
 // GetTxCmd returns the root tx command for the workqueue module.
 func (b AppModuleBasic) GetTxCmd() *cobra.Command {
-	return NewTxCmd()
+	return cli.GetTxCmd()
 }
 
 // GetQueryCmd returns the root query command for the workqueue module.
 func (AppModuleBasic) GetQueryCmd() *cobra.Command {
-	return NewQueryCmd()
+	return cli.GetQueryCmd(types.StoreKey)
 }
 
 // AppModule implements an application module for the workqueue module.
