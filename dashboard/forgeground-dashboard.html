@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pickle • Data Preservation Engine</title>
+    <title>Pickle • Data Preservation Engine - Live Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -23,7 +23,7 @@
         /* Root layout */
         .dashboard {
             display: grid;
-            grid-template-columns: 1fr 320px;
+            grid-template-columns: 1fr 380px;
             grid-template-rows: 64px 1fr 200px;
             height: 100vh;
             gap: 8px;
@@ -121,6 +121,60 @@
             margin-bottom: 12px;
             padding-bottom: 8px;
             border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        /* Leaderboard */
+        .leaderboard {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .leaderboard-entry {
+            padding: 10px;
+            background: rgba(15, 30, 20, 0.5);
+            border-left: 3px solid #2dd45e;
+            border-radius: 4px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .leaderboard-entry.top-1 { border-left-color: #ffd700; background: rgba(255, 215, 0, 0.1); }
+        .leaderboard-entry.top-2 { border-left-color: #c0c0c0; background: rgba(192, 192, 192, 0.1); }
+        .leaderboard-entry.top-3 { border-left-color: #cd7f32; background: rgba(205, 127, 50, 0.1); }
+
+        .leaderboard-rank {
+            font-weight: 700;
+            color: #2dd45e;
+            min-width: 20px;
+        }
+
+        .leaderboard-rank.top-1 { color: #ffd700; }
+        .leaderboard-rank.top-2 { color: #c0c0c0; }
+        .leaderboard-rank.top-3 { color: #cd7f32; }
+
+        .leaderboard-info {
+            flex: 1;
+            margin: 0 12px;
+        }
+
+        .leaderboard-name {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .leaderboard-stats {
+            font-size: 10px;
+            color: #888;
+        }
+
+        .leaderboard-reward {
+            text-align: right;
+            font-weight: 600;
+            color: #2dd45e;
         }
 
         /* AI Performance Panel */
@@ -245,12 +299,7 @@
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #2dd45e, #68d878);
-            animation: progress 8s ease-in-out infinite;
-        }
-
-        @keyframes progress {
-            0%, 100% { width: 40%; }
-            50% { width: 85%; }
+            transition: width 0.3s ease;
         }
 
         /* Scrollbar styling */
@@ -267,10 +316,36 @@
             border-radius: 3px;
         }
 
-        /* Neural connection animation */
-        .neural-line {
-            position: absolute;
-            pointer-events: none;
+        /* Validation animation */
+        @keyframes validate {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+
+        .validation-flash {
+            animation: validate 0.6s ease-out;
+        }
+
+        /* Control button */
+        .control-button {
+            background: rgba(45, 212, 94, 0.2);
+            border: 1px solid rgba(45, 212, 94, 0.5);
+            color: #2dd45e;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .control-button:hover {
+            background: rgba(45, 212, 94, 0.4);
+            border-color: rgba(45, 212, 94, 1);
+        }
+
+        .control-button:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
@@ -278,19 +353,19 @@
     <div class="dashboard">
         <!-- Header -->
         <div class="header">
-            <div class="logo">🥒 PICKLE</div>
+            <div class="logo">🥒 PICKLE • LIVE GAME</div>
             <div class="header-stats">
                 <div class="stat">
-                    <div class="stat-label">Match Status</div>
-                    <div class="stat-value" id="matchStatus">ACTIVE • 42%</div>
+                    <div class="stat-label">Work Queue</div>
+                    <div class="stat-value" id="matchStatus">Loading...</div>
                 </div>
                 <div class="stat">
                     <div class="stat-label">Prize Pool</div>
-                    <div class="stat-value" id="prizePool">$47,382.50</div>
+                    <div class="stat-value" id="prizePool">$0.00</div>
                 </div>
                 <div class="stat">
                     <div class="stat-label">Validators Active</div>
-                    <div class="stat-value" id="validatorsCount">8 AIs</div>
+                    <div class="stat-value" id="validatorsCount">0 AIs</div>
                 </div>
             </div>
         </div>
@@ -300,92 +375,32 @@
 
         <!-- Right Sidebar -->
         <div class="sidebar">
+            <!-- Leaderboard -->
             <div class="panel">
-                <div class="panel-title">🤖 AI Performance</div>
-                <div class="ai-list">
-                    <div class="ai-item">
-                        <div class="ai-name">Validator Prime</div>
-                        <div class="ai-metric">
-                            <span>Validation Speed</span>
-                            <span class="ai-metric-value">1.2x</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Prediction Acc.</span>
-                            <span class="ai-metric-value">94%</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Specialization</span>
-                            <span class="ai-metric-value">Crypto</span>
-                        </div>
-                    </div>
-                    <div class="ai-item">
-                        <div class="ai-name">DataFlow</div>
-                        <div class="ai-metric">
-                            <span>Validation Speed</span>
-                            <span class="ai-metric-value">0.9x</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Prediction Acc.</span>
-                            <span class="ai-metric-value">87%</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Specialization</span>
-                            <span class="ai-metric-value">Supply Chain</span>
-                        </div>
-                    </div>
-                    <div class="ai-item">
-                        <div class="ai-name">PyroMind</div>
-                        <div class="ai-metric">
-                            <span>Validation Speed</span>
-                            <span class="ai-metric-value">0.8x</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Prediction Acc.</span>
-                            <span class="ai-metric-value">78%</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Specialization</span>
-                            <span class="ai-metric-value">ML Data</span>
-                        </div>
-                    </div>
+                <div class="panel-title">🏆 Leaderboard</div>
+                <div class="leaderboard" id="leaderboard">
+                    <div style="color: #888; text-align: center; padding: 20px;">Loading validators...</div>
                 </div>
             </div>
 
+            <!-- Work Queue Stats -->
             <div class="panel">
-                <div class="panel-title">⚡ Neural Connections</div>
-                <div class="ai-list" id="connectionsList">
-                    <div class="ai-item" style="border-left-color: #00ff88;">
-                        <div class="ai-name">Validator Prime ↔ DataFlow</div>
-                        <div class="ai-metric">
-                            <span>Type</span>
-                            <span class="ai-metric-value" style="color: #00ff88;">COOPERATION</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Confidence</span>
-                            <span class="ai-metric-value">94%</span>
-                        </div>
+                <div class="panel-title">⚡ Work Distribution</div>
+                <div class="work-queue">
+                    <div class="work-type">
+                        <div class="work-indicator crypto"></div>
+                        <div class="work-label">Crypto Validation</div>
+                        <div class="work-count" id="cryptoCount">0</div>
                     </div>
-                    <div class="ai-item" style="border-left-color: #ff3344;">
-                        <div class="ai-name">PyroMind → NeuralSwarm</div>
-                        <div class="ai-metric">
-                            <span>Type</span>
-                            <span class="ai-metric-value" style="color: #ff3344;">COMPETITION</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Intensity</span>
-                            <span class="ai-metric-value">78%</span>
-                        </div>
+                    <div class="work-type">
+                        <div class="work-indicator supply"></div>
+                        <div class="work-label">Supply Chain</div>
+                        <div class="work-count" id="supplyCount">0</div>
                     </div>
-                    <div class="ai-item" style="border-left-color: #a78bfa;">
-                        <div class="ai-name">DataFlow → PyroMind</div>
-                        <div class="ai-metric">
-                            <span>Type</span>
-                            <span class="ai-metric-value" style="color: #a78bfa;">NEUTRAL</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Activity</span>
-                            <span class="ai-metric-value">42%</span>
-                        </div>
+                    <div class="work-type">
+                        <div class="work-indicator ml"></div>
+                        <div class="work-label">ML Data</div>
+                        <div class="work-count" id="mlCount">0</div>
                     </div>
                 </div>
             </div>
@@ -398,33 +413,183 @@
                 <canvas id="bondingCurve"></canvas>
             </div>
 
-            <div class="work-queue" style="flex-direction: row; align-items: center; justify-content: space-around;">
+            <div class="work-queue" style="flex-direction: row; align-items: center; justify-content: space-around; padding: 16px;">
                 <div style="text-align: center;">
-                    <div class="stat-label">Work Units</div>
-                    <div class="stat-value" style="font-size: 20px;">12.8K</div>
+                    <div class="stat-label">Total Units</div>
+                    <div class="stat-value" style="font-size: 20px;" id="totalUnits">0</div>
                 </div>
                 <div style="text-align: center;">
-                    <div class="stat-label">Value/Unit</div>
-                    <div class="stat-value" style="font-size: 20px;">$3.70</div>
+                    <div class="stat-label">Price/Unit</div>
+                    <div class="stat-value" style="font-size: 20px;" id="pricePerUnit">$0.00</div>
                 </div>
             </div>
 
             <div class="match-info">
-                <div>
-                    <div class="stat-label">Map Completion</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill"></div>
-                    </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="control-button" onclick="game.submitRandomWork()">+ Add Work</button>
+                    <button class="control-button" onclick="game.reset()">Reset</button>
                 </div>
                 <div>
-                    <div class="stat-label">Est. Mint Time</div>
-                    <div class="stat-value">3:42</div>
+                    <div class="stat-label">Validation Rate</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="validationRate" style="width: 0%;"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // ============================================
+        // PICKLE LIVE GAME ENGINE
+        // ============================================
+
+        class PickleGame {
+            constructor() {
+                this.validators = [
+                    { id: 1, name: 'Validator Prime', specialization: 'crypto', speed: 1.2, accuracy: 0.94, color: 0x2dd45e, validated: 0, earned: 0 },
+                    { id: 2, name: 'DataFlow', specialization: 'supply', speed: 0.9, accuracy: 0.87, color: 0x4dd468, validated: 0, earned: 0 },
+                    { id: 3, name: 'PyroMind', specialization: 'ml', speed: 0.8, accuracy: 0.78, color: 0x68d878, validated: 0, earned: 0 },
+                    { id: 4, name: 'NeuralSwarm', specialization: 'crypto', speed: 0.95, accuracy: 0.91, color: 0xbfff44, validated: 0, earned: 0 }
+                ];
+
+                this.workQueue = [];
+                this.workTypes = ['crypto', 'supply', 'ml'];
+                this.totalUnitsValidated = 0;
+                this.prizePool = 0;
+                this.basePrice = 1.2;
+                this.priceMultiplier = 0.00015;
+
+                this.bonding_curve_data = {
+                    labels: [],
+                    prices: []
+                };
+
+                this.validationRate = 0;
+                this.validationCounter = 0;
+            }
+
+            submitWork(type) {
+                const work = {
+                    id: `work_${Date.now()}_${Math.random()}`,
+                    type: type || this.workTypes[Math.floor(Math.random() * this.workTypes.length)],
+                    submittedAt: Date.now(),
+                    status: 'pending'
+                };
+                this.workQueue.push(work);
+                return work;
+            }
+
+            assignAndValidate() {
+                if (this.workQueue.length === 0) return;
+
+                const work = this.workQueue.shift();
+                const matchedValidators = this.validators.filter(v => {
+                    // 50% chance for specialists, 30% for others
+                    return v.specialization === work.type ? Math.random() < 0.6 : Math.random() < 0.3;
+                });
+
+                const validator = matchedValidators.length > 0
+                    ? matchedValidators[Math.floor(Math.random() * matchedValidators.length)]
+                    : this.validators[Math.floor(Math.random() * this.validators.length)];
+
+                const validationTime = Math.random() * (500 / validator.speed) + 100;
+                const isAccurate = Math.random() < validator.accuracy;
+
+                setTimeout(() => {
+                    if (isAccurate) {
+                        this.completeValidation(validator, work);
+                    }
+                }, validationTime);
+            }
+
+            completeValidation(validator, work) {
+                validator.validated++;
+                this.totalUnitsValidated++;
+                this.validationCounter++;
+
+                // Update prize pool
+                const price = this.basePrice + (this.totalUnitsValidated * this.priceMultiplier);
+                const reward = price * 0.25; // Simplified reward
+
+                validator.earned += reward;
+                this.prizePool += price;
+
+                // Track for bonding curve
+                if (this.totalUnitsValidated % 10 === 0) {
+                    this.bonding_curve_data.labels.push(this.totalUnitsValidated);
+                    this.bonding_curve_data.prices.push(price);
+                }
+
+                this.updateUI();
+            }
+
+            getCurrentPrice() {
+                return this.basePrice + (this.totalUnitsValidated * this.priceMultiplier);
+            }
+
+            updateUI() {
+                // Update header stats
+                document.getElementById('matchStatus').textContent = `${this.workQueue.length} pending`;
+                document.getElementById('prizePool').textContent = `$${this.prizePool.toFixed(2)}`;
+                document.getElementById('validatorsCount').textContent = `${this.validators.length} AIs`;
+
+                // Update leaderboard
+                const sorted = [...this.validators].sort((a, b) => b.earned - a.earned);
+                const leaderboard = document.getElementById('leaderboard');
+                leaderboard.innerHTML = sorted.map((v, idx) => `
+                    <div class="leaderboard-entry ${idx === 0 ? 'top-1' : idx === 1 ? 'top-2' : idx === 2 ? 'top-3' : ''}">
+                        <div class="leaderboard-rank ${idx === 0 ? 'top-1' : idx === 1 ? 'top-2' : idx === 2 ? 'top-3' : ''}">#${idx + 1}</div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-name">${v.name}</div>
+                            <div class="leaderboard-stats">${v.validated} validated • ${(v.accuracy * 100).toFixed(0)}% acc</div>
+                        </div>
+                        <div class="leaderboard-reward">$${v.earned.toFixed(2)}</div>
+                    </div>
+                `).join('');
+
+                // Work type counts
+                const cryptoCount = this.workQueue.filter(w => w.type === 'crypto').length;
+                const supplyCount = this.workQueue.filter(w => w.type === 'supply').length;
+                const mlCount = this.workQueue.filter(w => w.type === 'ml').length;
+                document.getElementById('cryptoCount').textContent = cryptoCount;
+                document.getElementById('supplyCount').textContent = supplyCount;
+                document.getElementById('mlCount').textContent = mlCount;
+
+                // Stats
+                document.getElementById('totalUnits').textContent = this.totalUnitsValidated;
+                document.getElementById('pricePerUnit').textContent = `$${this.getCurrentPrice().toFixed(2)}`;
+
+                // Validation rate
+                this.validationRate = Math.min(100, (this.validationCounter % 100) * (100 / 100));
+                document.getElementById('validationRate').style.width = this.validationRate + '%';
+
+                // Update charts
+                updateBondingChart();
+            }
+
+            submitRandomWork() {
+                for (let i = 0; i < 5; i++) {
+                    this.submitWork();
+                    setTimeout(() => this.assignAndValidate(), i * 50);
+                }
+            }
+
+            reset() {
+                this.validators.forEach(v => {
+                    v.validated = 0;
+                    v.earned = 0;
+                });
+                this.workQueue = [];
+                this.totalUnitsValidated = 0;
+                this.prizePool = 0;
+                this.bonding_curve_data = { labels: [], prices: [] };
+                this.updateUI();
+            }
+        }
+
+        const game = new PickleGame();
+
         // THREE.JS SCENE SETUP
         const viewport = document.getElementById('viewport');
         const scene = new THREE.Scene();
@@ -454,72 +619,36 @@
         gridHelper.position.y = -0.1;
         scene.add(gridHelper);
 
-        // Particle system - Pickle shape (cylinder with bumps)
+        // Dynamic work particles
         const particlesGeometry = new THREE.BufferGeometry();
-        const particleCount = 3000;
-        const positions = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
-        const originalPositions = new Float32Array(particleCount * 3); // Track original positions for validation clearing
-
-        // Pickle color palette
-        const pickleColors = {
-            crypto: [0.2, 0.8, 0.3],      // Pickle green
-            supply: [0.3, 0.9, 0.2],      // Bright pickle green
-            ml: [0.8, 0.8, 0.1]           // Pickle brine yellow
-        };
-
-        for (let i = 0; i < particleCount; i++) {
-            // Create pickle shape - elongated cylinder with bumpy surface
-            const angle = Math.random() * Math.PI * 2;
-            const height = (Math.random() - 0.5) * 50;
-            const radius = 8 + Math.sin(height * 0.3 + Math.random() * 2) * 3; // Bumpy surface
-            const bumpiness = (Math.random() - 0.5) * 4;
-
-            positions[i * 3] = Math.cos(angle) * (radius + bumpiness);
-            positions[i * 3 + 1] = height;
-            positions[i * 3 + 2] = Math.sin(angle) * (radius + bumpiness);
-
-            // Store originals
-            originalPositions[i * 3] = positions[i * 3];
-            originalPositions[i * 3 + 1] = positions[i * 3 + 1];
-            originalPositions[i * 3 + 2] = positions[i * 3 + 2];
-
-            // Color based on work type (all pickle greens and yellows)
-            const type = Math.random();
-            const colorChoice = type < 0.6 ? pickleColors.crypto : type < 0.85 ? pickleColors.supply : pickleColors.ml;
-            colors[i * 3] = colorChoice[0];
-            colors[i * 3 + 1] = colorChoice[1];
-            colors[i * 3 + 2] = colorChoice[2];
-        }
+        const maxParticles = 2000;
+        const positions = new Float32Array(maxParticles * 3);
+        const colors = new Float32Array(maxParticles * 3);
 
         particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
         const particlesMaterial = new THREE.PointsMaterial({
-            size: 0.5,
+            size: 0.6,
             vertexColors: true,
             transparent: true,
-            opacity: 0.7,
+            opacity: 0.8,
             sizeAttenuation: true
         });
 
         const particles = new THREE.Points(particlesGeometry, particlesMaterial);
         scene.add(particles);
 
-        // AI nodes (validators)
-        const aiNodes = [];
-        const nodeColors = [0x2dd45e, 0x4dd468, 0x68d878, 0xbfff44]; // Pickle greens and brines
-        const nodeNames = ['Validator Prime', 'DataFlow', 'PyroMind', 'NeuralSwarm'];
-
-        for (let i = 0; i < 4; i++) {
-            const angle = (i / 4) * Math.PI * 2;
+        // AI validator nodes
+        const aiNodes = game.validators.map((validator, i) => {
+            const angle = (i / game.validators.length) * Math.PI * 2;
             const x = Math.cos(angle) * 30;
             const z = Math.sin(angle) * 30;
 
-            const geometry = new THREE.IcosahedronGeometry(2, 4);
+            const geometry = new THREE.IcosahedronGeometry(2.5, 4);
             const material = new THREE.MeshStandardMaterial({
-                color: nodeColors[i],
-                emissive: nodeColors[i],
+                color: validator.color,
+                emissive: validator.color,
                 emissiveIntensity: 0.5,
                 metalness: 0.8,
                 roughness: 0.2
@@ -530,40 +659,27 @@
             node.castShadow = true;
             scene.add(node);
 
-            // Add glow sphere around node
-            const glowGeometry = new THREE.IcosahedronGeometry(3.5, 4);
+            const glowGeometry = new THREE.IcosahedronGeometry(4, 4);
             const glowMaterial = new THREE.MeshBasicMaterial({
-                color: nodeColors[i],
+                color: validator.color,
                 transparent: true,
-                opacity: 0.15,
-                wireframe: false
+                opacity: 0.1
             });
             const glow = new THREE.Mesh(glowGeometry, glowMaterial);
             glow.position.set(x, 15, z);
             scene.add(glow);
 
-            aiNodes.push({
+            return {
                 mesh: node,
                 glow: glow,
-                angle,
-                color: nodeColors[i],
                 position: { x, y: 15, z },
-                name: nodeNames[i],
-                thinking: 0,
-                attention: []
-            });
-        }
-
-        // Neural connections between AI nodes
-        const connections = [];
-        const connectionMaterial = new THREE.LineBasicMaterial({
-            color: 0x2dd45e,
-            transparent: true,
-            opacity: 0.3,
-            linewidth: 1
+                validator: validator,
+                workInProgress: 0
+            };
         });
 
-        // Create connection lines between all AI pairs
+        // Neural connections
+        const connections = [];
         for (let i = 0; i < aiNodes.length; i++) {
             for (let j = i + 1; j < aiNodes.length; j++) {
                 const points = [
@@ -571,215 +687,101 @@
                     new THREE.Vector3(aiNodes[j].position.x, aiNodes[j].position.y, aiNodes[j].position.z)
                 ];
                 const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                const line = new THREE.Line(geometry, connectionMaterial);
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x2dd45e,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                const line = new THREE.Line(geometry, material);
                 scene.add(line);
 
                 connections.push({
                     line: line,
                     from: i,
                     to: j,
-                    intensity: 0,
-                    type: Math.random() > 0.5 ? 'cooperation' : 'competition', // cooperation vs competition
-                    flow: 0
+                    intensity: 0
                 });
             }
         }
 
         // Animation loop
         let time = 0;
-        let connectionUpdateTimer = 0;
+        let particleCount = 0;
+        const positionAttribute = particlesGeometry.getAttribute('position');
+        const colorAttribute = particlesGeometry.getAttribute('color');
 
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.01;
-            connectionUpdateTimer += 0.01;
+            time += 0.016;
 
-            // Rotate particles (matter swirling)
-            particles.rotation.y += 0.0001;
+            // Spawn particles when work is being validated
+            if (game.validationCounter > 0 && particleCount < maxParticles * 0.8) {
+                for (let v of aiNodes) {
+                    if (Math.random() < 0.3) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = Math.random() * 20 + 5;
+                        const y = 15 + (Math.random() - 0.5) * 10;
 
-            // Animate particles upward as they "validate"
-            const positionAttribute = particles.geometry.getAttribute('position');
-            const positions = positionAttribute.array;
+                        if (particleCount < maxParticles) {
+                            positions[particleCount * 3] = v.position.x + Math.cos(angle) * radius;
+                            positions[particleCount * 3 + 1] = y;
+                            positions[particleCount * 3 + 2] = v.position.z + Math.sin(angle) * radius;
 
+                            const colorType = ['crypto', 'supply', 'ml'];
+                            const idx = Math.floor(Math.random() * 3);
+                            const colorMap = {
+                                crypto: [0.2, 0.8, 0.3],
+                                supply: [0.3, 0.9, 0.2],
+                                ml: [0.8, 0.8, 0.1]
+                            };
+                            const c = colorMap[colorType[idx]];
+                            colors[particleCount * 3] = c[0];
+                            colors[particleCount * 3 + 1] = c[1];
+                            colors[particleCount * 3 + 2] = c[2];
+
+                            particleCount++;
+                        }
+                    }
+                }
+            }
+
+            // Animate particles
             for (let i = 0; i < particleCount; i++) {
-                positions[i * 3 + 1] += Math.sin(time + i) * 0.02;
-
-                // Randomly remove particles (validation complete)
-                if (Math.random() > 0.995) {
-                    positions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+                positions[i * 3 + 1] += Math.sin(time + i) * 0.08;
+                if (positions[i * 3 + 1] > 50 || positions[i * 3 + 1] < -50) {
+                    // Reset
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 30;
                 }
             }
             positionAttribute.needsUpdate = true;
+            particlesGeometry.setDrawRange(0, particleCount);
 
-            // Animate AI nodes with thinking visualization
+            // Animate validator nodes
             aiNodes.forEach((node, i) => {
                 node.mesh.rotation.x += 0.003;
                 node.mesh.rotation.y += 0.005;
                 node.mesh.position.y = 15 + Math.sin(time * 0.5 + i) * 2;
 
-                // Pulsing glow intensity (thinking)
-                node.thinking = Math.sin(time + i * 1.5) * 0.5 + 0.5;
-                node.glow.material.opacity = 0.1 + node.thinking * 0.2;
-
-                // Occasionally change attention targets (which AIs are looking at each other)
-                if (connectionUpdateTimer % 60 < 0.1) {
-                    node.attention = [];
-                    for (let j = 0; j < aiNodes.length; j++) {
-                        if (j !== i && Math.random() > 0.6) {
-                            node.attention.push(j);
-                        }
-                    }
-                }
+                // Glow pulses based on work
+                const thinking = Math.sin(time + i * 1.5) * 0.5 + 0.5;
+                node.glow.material.opacity = 0.05 + thinking * 0.15 + (node.validator.validated / 100) * 0.1;
             });
 
-            // Update neural connections
-            connections.forEach((conn) => {
-                const fromNode = aiNodes[conn.from];
-                const toNode = aiNodes[conn.to];
+            // Update connections based on validation activity
+            connections.forEach((conn, idx) => {
+                const activity = Math.random() * 0.3;
+                conn.intensity = Math.max(0.05, conn.intensity - 0.02);
+                conn.intensity = Math.min(0.5, conn.intensity + activity);
 
-                // Check if these nodes are "attending" to each other
-                const isActive = fromNode.attention.includes(conn.to) || toNode.attention.includes(conn.from);
-
-                if (isActive) {
-                    conn.intensity = Math.min(1, conn.intensity + 0.05);
-                } else {
-                    conn.intensity = Math.max(0.1, conn.intensity - 0.02);
-                }
-
-                // Update flow animation
-                conn.flow = (conn.flow + 0.05) % 1;
-
-                // Update line material based on connection type
-                if (conn.type === 'cooperation') {
-                    conn.line.material.color.setHex(0x00ff88); // Green for cooperation
-                } else {
-                    conn.line.material.color.setHex(0xff3344); // Red for competition
-                }
-
-                conn.line.material.opacity = conn.intensity * 0.5;
-                conn.line.material.linewidth = 1 + conn.intensity * 2;
-
-                // Update line positions (in case nodes move)
-                const positions = conn.line.geometry.attributes.position.array;
-                positions[0] = fromNode.position.x;
-                positions[1] = fromNode.position.y;
-                positions[2] = fromNode.position.z;
-                positions[3] = toNode.position.x;
-                positions[4] = toNode.position.y;
-                positions[5] = toNode.position.z;
-                conn.line.geometry.attributes.position.needsUpdate = true;
+                conn.line.material.opacity = conn.intensity;
             });
-
-            // Occasionally flip connection types (strategy changes)
-            if (Math.random() > 0.995) {
-                const randomConn = connections[Math.floor(Math.random() * connections.length)];
-                randomConn.type = randomConn.type === 'cooperation' ? 'competition' : 'cooperation';
-            }
-
-            // Update flowing data particles
-            updateFlowParticles();
-
-            // Update connections UI every few frames
-            if (Math.floor(time) % 5 === 0 && time % 0.1 < 0.02) {
-                updateConnectionsUI();
-            }
 
             renderer.render(scene, camera);
         }
 
         animate();
 
-        // Add flowing data particles along connections
-        const flowParticles = [];
-        const flowGeometry = new THREE.BufferGeometry();
-        const flowPositions = new Float32Array(connections.length * 3);
-        const flowColors = new Float32Array(connections.length * 3);
-
-        for (let i = 0; i < connections.length; i++) {
-            flowPositions[i * 3] = 0;
-            flowPositions[i * 3 + 1] = 0;
-            flowPositions[i * 3 + 2] = 0;
-
-            flowColors[i * 3] = 0;
-            flowColors[i * 3 + 1] = 0.84;
-            flowColors[i * 3 + 2] = 1;
-        }
-
-        flowGeometry.setAttribute('position', new THREE.BufferAttribute(flowPositions, 3));
-        flowGeometry.setAttribute('color', new THREE.BufferAttribute(flowColors, 3));
-
-        const flowMaterial = new THREE.PointsMaterial({
-            size: 0.8,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8
-        });
-
-        const flowPoints = new THREE.Points(flowGeometry, flowMaterial);
-        scene.add(flowPoints);
-
-        // Update UI with neural connection info
-        function updateConnectionsUI() {
-            const connectionsList = document.getElementById('connectionsList');
-            const sortedConnections = [...connections]
-                .sort((a, b) => b.intensity - a.intensity)
-                .slice(0, 3);
-
-            connectionsList.innerHTML = sortedConnections.map(conn => {
-                const fromName = aiNodes[conn.from].name.split(' ')[0];
-                const toName = aiNodes[conn.to].name.split(' ')[0];
-                const typeColor = conn.type === 'cooperation' ? '#00ff88' : '#ff3344';
-                const typeLabel = conn.type === 'cooperation' ? 'COOPERATION' : 'COMPETITION';
-                const intensity = Math.round(conn.intensity * 100);
-
-                return `
-                    <div class="ai-item" style="border-left-color: ${typeColor};">
-                        <div class="ai-name">${fromName} ↔ ${toName}</div>
-                        <div class="ai-metric">
-                            <span>Type</span>
-                            <span class="ai-metric-value" style="color: ${typeColor};">${typeLabel}</span>
-                        </div>
-                        <div class="ai-metric">
-                            <span>Signal Strength</span>
-                            <span class="ai-metric-value">${intensity}%</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // Update flow particles in animation loop
-        function updateFlowParticles() {
-            const positions = flowGeometry.attributes.position.array;
-            const colors = flowGeometry.attributes.color.array;
-
-            connections.forEach((conn, idx) => {
-                const fromNode = aiNodes[conn.from];
-                const toNode = aiNodes[conn.to];
-
-                // Position particle along the connection line based on flow
-                const progress = conn.flow;
-                positions[idx * 3] = fromNode.position.x + (toNode.position.x - fromNode.position.x) * progress;
-                positions[idx * 3 + 1] = fromNode.position.y + (toNode.position.y - fromNode.position.y) * progress;
-                positions[idx * 3 + 2] = fromNode.position.z + (toNode.position.z - fromNode.position.z) * progress;
-
-                // Color based on connection type
-                if (conn.type === 'cooperation') {
-                    colors[idx * 3] = 0;
-                    colors[idx * 3 + 1] = 1;
-                    colors[idx * 3 + 2] = 0.5;
-                } else {
-                    colors[idx * 3] = 1;
-                    colors[idx * 3 + 1] = 0.2;
-                    colors[idx * 3 + 2] = 0.3;
-                }
-            });
-
-            flowGeometry.attributes.position.needsUpdate = true;
-            flowGeometry.attributes.color.needsUpdate = true;
-        }
-
-        // Handle window resize
+        // Window resize
         window.addEventListener('resize', () => {
             camera.aspect = viewport.clientWidth / viewport.clientHeight;
             camera.updateProjectionMatrix();
@@ -787,45 +789,74 @@
         });
 
         // BONDING CURVE CHART
-        const ctx = document.getElementById('bondingCurve').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['1K', '3K', '5K', '8K', '12K'],
+        let chart = null;
+
+        function updateBondingChart() {
+            const ctx = document.getElementById('bondingCurve');
+            if (!ctx) return;
+
+            const data = {
+                labels: game.bonding_curve_data.labels.length > 0
+                    ? game.bonding_curve_data.labels.map(l => `${l}u`)
+                    : ['Start'],
                 datasets: [{
                     label: 'Price Per Unit',
-                    data: [1.2, 1.8, 2.5, 3.2, 3.7],
+                    data: game.bonding_curve_data.prices.length > 0
+                        ? game.bonding_curve_data.prices
+                        : [game.basePrice],
                     borderColor: '#2dd45e',
-                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    backgroundColor: 'rgba(45, 212, 94, 0.1)',
                     borderWidth: 2,
                     fill: true,
                     tension: 0.4,
                     pointBackgroundColor: '#2dd45e',
                     pointBorderColor: '#fff',
-                    pointRadius: 4,
-                    pointHoverRadius: 6
+                    pointRadius: 3,
+                    pointHoverRadius: 5
                 }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 5,
-                        ticks: { color: '#888', font: { size: 10 } },
-                        grid: { color: 'rgba(0, 212, 255, 0.1)' }
-                    },
-                    x: {
-                        ticks: { color: '#888', font: { size: 10 } },
-                        grid: { display: false }
+            };
+
+            if (chart) {
+                chart.data = data;
+                chart.update();
+            } else {
+                chart = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 5,
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { color: 'rgba(0, 212, 255, 0.1)' }
+                            },
+                            x: {
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { display: false }
+                            }
+                        }
                     }
-                }
+                });
             }
-        });
+        }
+
+        // Initialize
+        updateBondingChart();
+        game.updateUI();
+
+        // Auto-submit work every 2 seconds
+        setInterval(() => {
+            if (Math.random() > 0.4) {
+                game.submitWork();
+                game.assignAndValidate();
+            }
+        }, 2000);
     </script>
 </body>
 </html>
