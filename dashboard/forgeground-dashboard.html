@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickle • Data Preservation Engine</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f1410;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        /* Root layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            grid-template-rows: 64px 1fr 200px;
+            height: 100vh;
+            gap: 8px;
+            padding: 8px;
+            background: linear-gradient(135deg, #0f1410 0%, #1a2218 100%);
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: rgba(20, 30, 22, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(100, 200, 100, 0.2);
+            border-radius: 8px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #2dd45e, #68d878);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 32px;
+            font-size: 13px;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 11px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #2dd45e;
+            font-size: 14px;
+        }
+
+        /* Main 3D viewport */
+        #viewport {
+            grid-column: 1;
+            grid-row: 2;
+            background: radial-gradient(ellipse at 50% 50%, rgba(45, 212, 94, 0.08) 0%, transparent 70%),
+                        linear-gradient(to bottom, #0f1410, #1a2218);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(45, 212, 94, 0.15);
+        }
+
+        /* Right sidebar */
+        .sidebar {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .panel {
+            background: rgba(20, 30, 22, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(45, 212, 94, 0.15);
+            border-radius: 8px;
+            padding: 16px;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #2dd45e;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        /* AI Performance Panel */
+        .ai-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ai-item {
+            padding: 8px;
+            background: rgba(15, 30, 20, 0.5);
+            border-left: 2px solid #2dd45e;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .ai-name {
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .ai-metric {
+            display: flex;
+            justify-content: space-between;
+            color: #888;
+            margin: 2px 0;
+        }
+
+        .ai-metric-value {
+            color: #2dd45e;
+            font-weight: 500;
+        }
+
+        /* Bottom bonding curve */
+        .bottom-panel {
+            grid-column: 1 / -1;
+            grid-row: 3;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .curve-container {
+            background: rgba(20, 30, 22, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(45, 212, 94, 0.15);
+            border-radius: 8px;
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #bondingCurve {
+            width: 100%;
+            height: 100%;
+        }
+
+        .work-queue {
+            background: rgba(20, 30, 22, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(45, 212, 94, 0.15);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .work-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .work-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .work-indicator.crypto { background: #2dd45e; }
+        .work-indicator.supply { background: #68d878; }
+        .work-indicator.ml { background: #bfff44; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .work-label {
+            flex: 1;
+        }
+
+        .work-count {
+            color: #2dd45e;
+            font-weight: 600;
+        }
+
+        .match-info {
+            background: rgba(20, 30, 22, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(45, 212, 94, 0.15);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(45, 212, 94, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2dd45e, #68d878);
+            animation: progress 8s ease-in-out infinite;
+        }
+
+        @keyframes progress {
+            0%, 100% { width: 40%; }
+            50% { width: 85%; }
+        }
+
+        /* Scrollbar styling */
+        .panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .panel::-webkit-scrollbar-track {
+            background: rgba(45, 212, 94, 0.05);
+        }
+
+        .panel::-webkit-scrollbar-thumb {
+            background: rgba(45, 212, 94, 0.3);
+            border-radius: 3px;
+        }
+
+        /* Neural connection animation */
+        .neural-line {
+            position: absolute;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">🥒 PICKLE</div>
+            <div class="header-stats">
+                <div class="stat">
+                    <div class="stat-label">Match Status</div>
+                    <div class="stat-value" id="matchStatus">ACTIVE • 42%</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Prize Pool</div>
+                    <div class="stat-value" id="prizePool">$47,382.50</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Validators Active</div>
+                    <div class="stat-value" id="validatorsCount">8 AIs</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main 3D Viewport -->
+        <div id="viewport"></div>
+
+        <!-- Right Sidebar -->
+        <div class="sidebar">
+            <div class="panel">
+                <div class="panel-title">🤖 AI Performance</div>
+                <div class="ai-list">
+                    <div class="ai-item">
+                        <div class="ai-name">Validator Prime</div>
+                        <div class="ai-metric">
+                            <span>Validation Speed</span>
+                            <span class="ai-metric-value">1.2x</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Prediction Acc.</span>
+                            <span class="ai-metric-value">94%</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Specialization</span>
+                            <span class="ai-metric-value">Crypto</span>
+                        </div>
+                    </div>
+                    <div class="ai-item">
+                        <div class="ai-name">DataFlow</div>
+                        <div class="ai-metric">
+                            <span>Validation Speed</span>
+                            <span class="ai-metric-value">0.9x</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Prediction Acc.</span>
+                            <span class="ai-metric-value">87%</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Specialization</span>
+                            <span class="ai-metric-value">Supply Chain</span>
+                        </div>
+                    </div>
+                    <div class="ai-item">
+                        <div class="ai-name">PyroMind</div>
+                        <div class="ai-metric">
+                            <span>Validation Speed</span>
+                            <span class="ai-metric-value">0.8x</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Prediction Acc.</span>
+                            <span class="ai-metric-value">78%</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Specialization</span>
+                            <span class="ai-metric-value">ML Data</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">⚡ Neural Connections</div>
+                <div class="ai-list" id="connectionsList">
+                    <div class="ai-item" style="border-left-color: #00ff88;">
+                        <div class="ai-name">Validator Prime ↔ DataFlow</div>
+                        <div class="ai-metric">
+                            <span>Type</span>
+                            <span class="ai-metric-value" style="color: #00ff88;">COOPERATION</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Confidence</span>
+                            <span class="ai-metric-value">94%</span>
+                        </div>
+                    </div>
+                    <div class="ai-item" style="border-left-color: #ff3344;">
+                        <div class="ai-name">PyroMind → NeuralSwarm</div>
+                        <div class="ai-metric">
+                            <span>Type</span>
+                            <span class="ai-metric-value" style="color: #ff3344;">COMPETITION</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Intensity</span>
+                            <span class="ai-metric-value">78%</span>
+                        </div>
+                    </div>
+                    <div class="ai-item" style="border-left-color: #a78bfa;">
+                        <div class="ai-name">DataFlow → PyroMind</div>
+                        <div class="ai-metric">
+                            <span>Type</span>
+                            <span class="ai-metric-value" style="color: #a78bfa;">NEUTRAL</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Activity</span>
+                            <span class="ai-metric-value">42%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom: Bonding Curve + Info -->
+        <div class="bottom-panel">
+            <div class="curve-container">
+                <div class="panel-title" style="margin-bottom: 8px;">📈 Bonding Curve</div>
+                <canvas id="bondingCurve"></canvas>
+            </div>
+
+            <div class="work-queue" style="flex-direction: row; align-items: center; justify-content: space-around;">
+                <div style="text-align: center;">
+                    <div class="stat-label">Work Units</div>
+                    <div class="stat-value" style="font-size: 20px;">12.8K</div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="stat-label">Value/Unit</div>
+                    <div class="stat-value" style="font-size: 20px;">$3.70</div>
+                </div>
+            </div>
+
+            <div class="match-info">
+                <div>
+                    <div class="stat-label">Map Completion</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="stat-label">Est. Mint Time</div>
+                    <div class="stat-value">3:42</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // THREE.JS SCENE SETUP
+        const viewport = document.getElementById('viewport');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x0f1410, 100, 500);
+
+        const camera = new THREE.PerspectiveCamera(75, viewport.clientWidth / viewport.clientHeight, 0.1, 1000);
+        camera.position.set(0, 40, 40);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+        renderer.setClearColor(0x0f1410, 0.1);
+        renderer.shadowMap.enabled = true;
+        viewport.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0x2dd45e, 1, 200);
+        pointLight.position.set(50, 50, 50);
+        pointLight.castShadow = true;
+        scene.add(pointLight);
+
+        // Grid
+        const gridHelper = new THREE.GridHelper(100, 20, 0x2dd45e, 0x1a3d2a);
+        gridHelper.position.y = -0.1;
+        scene.add(gridHelper);
+
+        // Particle system - Pickle shape (cylinder with bumps)
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particleCount = 3000;
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const originalPositions = new Float32Array(particleCount * 3); // Track original positions for validation clearing
+
+        // Pickle color palette
+        const pickleColors = {
+            crypto: [0.2, 0.8, 0.3],      // Pickle green
+            supply: [0.3, 0.9, 0.2],      // Bright pickle green
+            ml: [0.8, 0.8, 0.1]           // Pickle brine yellow
+        };
+
+        for (let i = 0; i < particleCount; i++) {
+            // Create pickle shape - elongated cylinder with bumpy surface
+            const angle = Math.random() * Math.PI * 2;
+            const height = (Math.random() - 0.5) * 50;
+            const radius = 8 + Math.sin(height * 0.3 + Math.random() * 2) * 3; // Bumpy surface
+            const bumpiness = (Math.random() - 0.5) * 4;
+
+            positions[i * 3] = Math.cos(angle) * (radius + bumpiness);
+            positions[i * 3 + 1] = height;
+            positions[i * 3 + 2] = Math.sin(angle) * (radius + bumpiness);
+
+            // Store originals
+            originalPositions[i * 3] = positions[i * 3];
+            originalPositions[i * 3 + 1] = positions[i * 3 + 1];
+            originalPositions[i * 3 + 2] = positions[i * 3 + 2];
+
+            // Color based on work type (all pickle greens and yellows)
+            const type = Math.random();
+            const colorChoice = type < 0.6 ? pickleColors.crypto : type < 0.85 ? pickleColors.supply : pickleColors.ml;
+            colors[i * 3] = colorChoice[0];
+            colors[i * 3 + 1] = colorChoice[1];
+            colors[i * 3 + 2] = colorChoice[2];
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.5,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.7,
+            sizeAttenuation: true
+        });
+
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        // AI nodes (validators)
+        const aiNodes = [];
+        const nodeColors = [0x2dd45e, 0x4dd468, 0x68d878, 0xbfff44]; // Pickle greens and brines
+        const nodeNames = ['Validator Prime', 'DataFlow', 'PyroMind', 'NeuralSwarm'];
+
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
+            const x = Math.cos(angle) * 30;
+            const z = Math.sin(angle) * 30;
+
+            const geometry = new THREE.IcosahedronGeometry(2, 4);
+            const material = new THREE.MeshStandardMaterial({
+                color: nodeColors[i],
+                emissive: nodeColors[i],
+                emissiveIntensity: 0.5,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+
+            const node = new THREE.Mesh(geometry, material);
+            node.position.set(x, 15, z);
+            node.castShadow = true;
+            scene.add(node);
+
+            // Add glow sphere around node
+            const glowGeometry = new THREE.IcosahedronGeometry(3.5, 4);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: nodeColors[i],
+                transparent: true,
+                opacity: 0.15,
+                wireframe: false
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.position.set(x, 15, z);
+            scene.add(glow);
+
+            aiNodes.push({
+                mesh: node,
+                glow: glow,
+                angle,
+                color: nodeColors[i],
+                position: { x, y: 15, z },
+                name: nodeNames[i],
+                thinking: 0,
+                attention: []
+            });
+        }
+
+        // Neural connections between AI nodes
+        const connections = [];
+        const connectionMaterial = new THREE.LineBasicMaterial({
+            color: 0x2dd45e,
+            transparent: true,
+            opacity: 0.3,
+            linewidth: 1
+        });
+
+        // Create connection lines between all AI pairs
+        for (let i = 0; i < aiNodes.length; i++) {
+            for (let j = i + 1; j < aiNodes.length; j++) {
+                const points = [
+                    new THREE.Vector3(aiNodes[i].position.x, aiNodes[i].position.y, aiNodes[i].position.z),
+                    new THREE.Vector3(aiNodes[j].position.x, aiNodes[j].position.y, aiNodes[j].position.z)
+                ];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, connectionMaterial);
+                scene.add(line);
+
+                connections.push({
+                    line: line,
+                    from: i,
+                    to: j,
+                    intensity: 0,
+                    type: Math.random() > 0.5 ? 'cooperation' : 'competition', // cooperation vs competition
+                    flow: 0
+                });
+            }
+        }
+
+        // Animation loop
+        let time = 0;
+        let connectionUpdateTimer = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            connectionUpdateTimer += 0.01;
+
+            // Rotate particles (matter swirling)
+            particles.rotation.y += 0.0001;
+
+            // Animate particles upward as they "validate"
+            const positionAttribute = particles.geometry.getAttribute('position');
+            const positions = positionAttribute.array;
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3 + 1] += Math.sin(time + i) * 0.02;
+
+                // Randomly remove particles (validation complete)
+                if (Math.random() > 0.995) {
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+                }
+            }
+            positionAttribute.needsUpdate = true;
+
+            // Animate AI nodes with thinking visualization
+            aiNodes.forEach((node, i) => {
+                node.mesh.rotation.x += 0.003;
+                node.mesh.rotation.y += 0.005;
+                node.mesh.position.y = 15 + Math.sin(time * 0.5 + i) * 2;
+
+                // Pulsing glow intensity (thinking)
+                node.thinking = Math.sin(time + i * 1.5) * 0.5 + 0.5;
+                node.glow.material.opacity = 0.1 + node.thinking * 0.2;
+
+                // Occasionally change attention targets (which AIs are looking at each other)
+                if (connectionUpdateTimer % 60 < 0.1) {
+                    node.attention = [];
+                    for (let j = 0; j < aiNodes.length; j++) {
+                        if (j !== i && Math.random() > 0.6) {
+                            node.attention.push(j);
+                        }
+                    }
+                }
+            });
+
+            // Update neural connections
+            connections.forEach((conn) => {
+                const fromNode = aiNodes[conn.from];
+                const toNode = aiNodes[conn.to];
+
+                // Check if these nodes are "attending" to each other
+                const isActive = fromNode.attention.includes(conn.to) || toNode.attention.includes(conn.from);
+
+                if (isActive) {
+                    conn.intensity = Math.min(1, conn.intensity + 0.05);
+                } else {
+                    conn.intensity = Math.max(0.1, conn.intensity - 0.02);
+                }
+
+                // Update flow animation
+                conn.flow = (conn.flow + 0.05) % 1;
+
+                // Update line material based on connection type
+                if (conn.type === 'cooperation') {
+                    conn.line.material.color.setHex(0x00ff88); // Green for cooperation
+                } else {
+                    conn.line.material.color.setHex(0xff3344); // Red for competition
+                }
+
+                conn.line.material.opacity = conn.intensity * 0.5;
+                conn.line.material.linewidth = 1 + conn.intensity * 2;
+
+                // Update line positions (in case nodes move)
+                const positions = conn.line.geometry.attributes.position.array;
+                positions[0] = fromNode.position.x;
+                positions[1] = fromNode.position.y;
+                positions[2] = fromNode.position.z;
+                positions[3] = toNode.position.x;
+                positions[4] = toNode.position.y;
+                positions[5] = toNode.position.z;
+                conn.line.geometry.attributes.position.needsUpdate = true;
+            });
+
+            // Occasionally flip connection types (strategy changes)
+            if (Math.random() > 0.995) {
+                const randomConn = connections[Math.floor(Math.random() * connections.length)];
+                randomConn.type = randomConn.type === 'cooperation' ? 'competition' : 'cooperation';
+            }
+
+            // Update flowing data particles
+            updateFlowParticles();
+
+            // Update connections UI every few frames
+            if (Math.floor(time) % 5 === 0 && time % 0.1 < 0.02) {
+                updateConnectionsUI();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Add flowing data particles along connections
+        const flowParticles = [];
+        const flowGeometry = new THREE.BufferGeometry();
+        const flowPositions = new Float32Array(connections.length * 3);
+        const flowColors = new Float32Array(connections.length * 3);
+
+        for (let i = 0; i < connections.length; i++) {
+            flowPositions[i * 3] = 0;
+            flowPositions[i * 3 + 1] = 0;
+            flowPositions[i * 3 + 2] = 0;
+
+            flowColors[i * 3] = 0;
+            flowColors[i * 3 + 1] = 0.84;
+            flowColors[i * 3 + 2] = 1;
+        }
+
+        flowGeometry.setAttribute('position', new THREE.BufferAttribute(flowPositions, 3));
+        flowGeometry.setAttribute('color', new THREE.BufferAttribute(flowColors, 3));
+
+        const flowMaterial = new THREE.PointsMaterial({
+            size: 0.8,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const flowPoints = new THREE.Points(flowGeometry, flowMaterial);
+        scene.add(flowPoints);
+
+        // Update UI with neural connection info
+        function updateConnectionsUI() {
+            const connectionsList = document.getElementById('connectionsList');
+            const sortedConnections = [...connections]
+                .sort((a, b) => b.intensity - a.intensity)
+                .slice(0, 3);
+
+            connectionsList.innerHTML = sortedConnections.map(conn => {
+                const fromName = aiNodes[conn.from].name.split(' ')[0];
+                const toName = aiNodes[conn.to].name.split(' ')[0];
+                const typeColor = conn.type === 'cooperation' ? '#00ff88' : '#ff3344';
+                const typeLabel = conn.type === 'cooperation' ? 'COOPERATION' : 'COMPETITION';
+                const intensity = Math.round(conn.intensity * 100);
+
+                return `
+                    <div class="ai-item" style="border-left-color: ${typeColor};">
+                        <div class="ai-name">${fromName} ↔ ${toName}</div>
+                        <div class="ai-metric">
+                            <span>Type</span>
+                            <span class="ai-metric-value" style="color: ${typeColor};">${typeLabel}</span>
+                        </div>
+                        <div class="ai-metric">
+                            <span>Signal Strength</span>
+                            <span class="ai-metric-value">${intensity}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update flow particles in animation loop
+        function updateFlowParticles() {
+            const positions = flowGeometry.attributes.position.array;
+            const colors = flowGeometry.attributes.color.array;
+
+            connections.forEach((conn, idx) => {
+                const fromNode = aiNodes[conn.from];
+                const toNode = aiNodes[conn.to];
+
+                // Position particle along the connection line based on flow
+                const progress = conn.flow;
+                positions[idx * 3] = fromNode.position.x + (toNode.position.x - fromNode.position.x) * progress;
+                positions[idx * 3 + 1] = fromNode.position.y + (toNode.position.y - fromNode.position.y) * progress;
+                positions[idx * 3 + 2] = fromNode.position.z + (toNode.position.z - fromNode.position.z) * progress;
+
+                // Color based on connection type
+                if (conn.type === 'cooperation') {
+                    colors[idx * 3] = 0;
+                    colors[idx * 3 + 1] = 1;
+                    colors[idx * 3 + 2] = 0.5;
+                } else {
+                    colors[idx * 3] = 1;
+                    colors[idx * 3 + 1] = 0.2;
+                    colors[idx * 3 + 2] = 0.3;
+                }
+            });
+
+            flowGeometry.attributes.position.needsUpdate = true;
+            flowGeometry.attributes.color.needsUpdate = true;
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = viewport.clientWidth / viewport.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+        });
+
+        // BONDING CURVE CHART
+        const ctx = document.getElementById('bondingCurve').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['1K', '3K', '5K', '8K', '12K'],
+                datasets: [{
+                    label: 'Price Per Unit',
+                    data: [1.2, 1.8, 2.5, 3.2, 3.7],
+                    borderColor: '#2dd45e',
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#2dd45e',
+                    pointBorderColor: '#fff',
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 5,
+                        ticks: { color: '#888', font: { size: 10 } },
+                        grid: { color: 'rgba(0, 212, 255, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#888', font: { size: 10 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

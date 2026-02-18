@@ -1,0 +1,47 @@
+# Build artifacts
+/bin/
+/dist/
+*.o
+*.a
+*.so
+
+# Go
+*.go.mod
+*.go.sum
+go.sum
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node/Dashboard
+node_modules/
+package-lock.json
+yarn.lock
+dist/
+
+# Cosmos
+.gaiad/
+.pickled/
+.pickled-testnet/
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+*.coverprofile
+
+# Docker
+docker-compose.override.yml
