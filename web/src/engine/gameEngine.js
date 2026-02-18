@@ -26,6 +26,7 @@ export class PickleGame {
     this.validationCounter = 0;
     this._workId = 0;
     this._autoInterval = null;
+    this._pendingTimeouts = [];
   }
 
   start() {
@@ -42,20 +43,56 @@ export class PickleGame {
     clearInterval(this._autoInterval);
   }
 
-  submitWork(type) {
+  submitWork(type, silent = false) {
     const work = {
       id: `w${++this._workId}`,
       type: type ?? WORK_TYPES[Math.floor(Math.random() * WORK_TYPES.length)],
       status: 'pending',
     };
     this.workQueue.push(work);
-    this._emit();
+    if (!silent) this._emit();
     return work;
   }
 
   submitBatch(n = 5) {
     for (let i = 0; i < n; i++) this.submitWork();
     for (let i = 0; i < n; i++) this.assignAndValidate();
+  }
+
+  // Flood: continuously hammers work every 100ms until stopped
+  startFlood() {
+    if (this._floodInterval) return;
+    // Pause the auto-drain and cancel all in-flight validation timeouts
+    clearInterval(this._autoInterval);
+    this._autoInterval = null;
+    this._pendingTimeouts.forEach(t => clearTimeout(t));
+    this._pendingTimeouts = [];
+    this._floodInterval = setInterval(() => {
+      // Batch submit silently, emit once at the end
+      for (let i = 0; i < 500; i++) this.submitWork(undefined, true);
+      this._emit();
+    }, 50);
+  }
+
+  stopFlood() {
+    clearInterval(this._floodInterval);
+    this._floodInterval = null;
+    // Drain the backlog fast — process 20 per tick until queue is clear
+    const drainInterval = setInterval(() => {
+      for (let i = 0; i < 20; i++) this.assignAndValidate();
+      if (this.workQueue.length === 0) clearInterval(drainInterval);
+    }, 100);
+    // Resume normal auto-drain
+    this._autoInterval = setInterval(() => {
+      if (Math.random() > 0.35) {
+        this.submitWork();
+        this.assignAndValidate();
+      }
+    }, 2000);
+  }
+
+  get flooding() {
+    return !!this._floodInterval;
   }
 
   assignAndValidate() {
@@ -70,11 +107,13 @@ export class PickleGame {
       : this.validators[Math.floor(Math.random() * this.validators.length)];
 
     const ms = (Math.random() * 500 + 100) / validator.speed;
-    setTimeout(() => {
+    const tid = setTimeout(() => {
+      this._pendingTimeouts = this._pendingTimeouts.filter(t => t !== tid);
       if (Math.random() < validator.accuracy) {
         this._complete(validator, work);
       }
     }, ms);
+    this._pendingTimeouts.push(tid);
   }
 
   _complete(validator, work) {

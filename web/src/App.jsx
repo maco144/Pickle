@@ -27,8 +27,25 @@ export default function App() {
     return () => game.stop();
   }, []);
 
+  const [flooding, setFlooding] = useState(false);
+
   const handleAddWork = () => gameRef.current?.submitBatch(5);
-  const handleReset   = () => gameRef.current?.reset();
+  const handleReset   = () => {
+    gameRef.current?.stopFlood();
+    setFlooding(false);
+    gameRef.current?.reset();
+  };
+  const handleFlood = () => {
+    const game = gameRef.current;
+    if (!game) return;
+    if (flooding) {
+      game.stopFlood();
+      setFlooding(false);
+    } else {
+      game.startFlood();
+      setFlooding(true);
+    }
+  };
 
   const {
     validators, workQueue, totalUnitsValidated,
@@ -64,8 +81,11 @@ export default function App() {
           totalUnitsValidated={totalUnitsValidated}
           currentPrice={currentPrice}
           validationCounter={validationCounter}
+          workQueueSize={workQueue.length}
           onAddWork={handleAddWork}
           onReset={handleReset}
+          onFlood={handleFlood}
+          flooding={flooding}
         />
       </div>
     </div>
